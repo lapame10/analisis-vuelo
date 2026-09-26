@@ -388,6 +388,19 @@ tr.clic:hover td{ background:#f7f9fc }
 
 <div id="aviso"></div>
 
+<script>
+  /* ===== EL SERVICE WORKER =====
+     Sin esto, el iPhone sigue viendo la version de antes: GitHub Pages sirve los
+     archivos con "guardalos 10 minutos" y el icono de la pantalla de inicio ni
+     siquiera pide la version nueva.
+     El service worker (sw.js) va a buscar cada archivo a la red primero, asi que
+     con conexion siempre se ve lo ultimo publicado. */
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+</script>
 <script type="module" src="app.js"></script>
 </body>
 </html>
