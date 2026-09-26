@@ -5,7 +5,7 @@ import * as Mapa from './mapa.js';
 import * as Graf from './grafico.js';
 import { esconde, lee, llevaAlgo } from './secreto.js';
 import * as Canal from './canal.js';
-import { cargaTasks, tituloDe, subtituloDe } from './tasks.js';
+import { leeIndice, leeTask, tituloDe, subtituloDe } from './tasks.js';
 
 /* ============================================================
    El estado
@@ -61,10 +61,15 @@ async function arranca() {
   document.getElementById('pAnalisis').classList.add('on');
   document.getElementById('bMensaje').style.display = '';
 
-  TASKS = await cargaTasks(parseIGC, analiza);
+  TASKS = await leeIndice();
   pintaSelector();
 
-  const primero = TASKS.findIndex(t => t.ok);
+  /* los vuelos del primer task se traen ahora: es lo unico que se descarga al
+     abrir. Los demas, cuando se cambie de task. */
+  await leeTask(TASKS[0], parseIGC, analiza);
+  pintaSelector();
+
+  const primero = TASKS.findIndex(t => t.leido && t.ok);
   if (primero < 0) {
     /* no se pudo leer ninguno: se dice, y no se inventa nada */
     document.getElementById('subtitulo').textContent = 'No se pudieron leer los tasks';
@@ -94,7 +99,16 @@ function pintaSelector() {
    de equipo, pero otra conversacion. */
 async function abreTask(i, piloto) {
   const t = TASKS[i];
-  if (!t || !t.ok) return;
+  if (!t) return;
+
+  /* el primero solo se trae una vez */
+  if (!t.leido) {
+    const sub = document.getElementById('subtitulo');
+    if (sub) sub.textContent = 'Cargando ' + t.nombre + '…';
+    await leeTask(t, parseIGC, analiza);
+    pintaSelector();
+  }
+  if (!t.ok) return;
 
   taskActual = i;
   pilotoActual = piloto == null ? (t.cual || 0) : piloto;

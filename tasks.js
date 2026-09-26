@@ -38,7 +38,18 @@ let cache = null;
    El indice trae la lista de tasks, sus fechas y sus vuelos. Los IGC se leen
    aparte, uno a uno, para que un archivo que falle no tumbe los demas.
 */
-export async function cargaTasks(parseIGC, analiza) {
+/* ============================================================
+   LEER EL INDICE, SIN LOS VUELOS
+   ============================================================
+   El indice es pequeño (unos KB) y trae la lista de tasks con sus vuelos. Los
+   IGC se leen APARTE, y solo del task que se esta mirando.
+
+   Eso importa: los 7 tasks son 8 MB. Cargarlos todos al abrir hacia que la app
+   tardara mas de veinte segundos en estar lista, y una app que se queda cargando
+   llama la atencion. Cargando solo el task visible son unos 1,2 MB: aparece en
+   un par de segundos, y los demas se traen cuando se cambia de task.
+*/
+export async function leeIndice() {
   if (cache) return cache;
 
   let indice = null;
@@ -48,65 +59,71 @@ export async function cargaTasks(parseIGC, analiza) {
   } catch (e) { indice = null; }
 
   if (!indice) {
-    /* sin indice no hay nada que enseñar, y se dice claro */
-    return [{
+    cache = [{
       n: 0, nombre: 'Sin datos', ok: false,
       motivo: 'No se encontró la lista de tasks (' + INDICE + ').',
-      vuelos: [],
+      vuelos: [], leido: false,
     }];
+    return cache;
   }
 
-  const tasks = [];
-
-  /* se ordenan por numero */
   const claves = Object.keys(indice).sort((a, b) => (indice[a].n || 0) - (indice[b].n || 0));
-
-  for (const k of claves) {
+  cache = claves.map(k => {
     const t = indice[k];
-    const ficha = {
+    return {
       n: t.n,
       nombre: 'Task ' + t.n,
       sitio: t.sitio || '',
       fecha: t.fecha || '',
       ok: false,
+      leido: false,          /* los vuelos todavia no se han traido */
       motivo: null,
-      vuelos: [],       /* los que se pudieron leer */
+      vuelos: [],
       fallos: [],
+      lista: t.vuelos || [], /* la lista, sin leer los archivos */
     };
+  });
+  return cache;
+}
 
-    for (const v of (t.vuelos || [])) {
-      try {
-        const r = await fetch(v.archivo, { cache: 'force-cache' });
-        if (!r.ok) { ficha.fallos.push(v.archivo + ' (' + r.status + ')'); continue; }
-        const texto = await r.text();
-        const a = analiza(texto, parseIGC);
-        if (!a.ok) { ficha.fallos.push(v.archivo + ': ' + a.motivo); continue; }
+/* ============================================================
+   Leer los vuelos de UN task
+   ============================================================
+   Se llama al abrir un task y la primera vez tarda lo que tarde la red. Las
+   siguientes veces ya esta en memoria.
+*/
+export async function leeTask(t, parseIGC, analiza) {
+  if (!t) return t;
+  if (t.leido) return t;
 
-        ficha.vuelos.push({
-          ...a,
-          /* el nombre sale del indice, que es el del archivo original; y si el
-             archivo trae uno mejor, se usa ese */
-          nombre: a.nombre || v.piloto || v.archivo,
-          esPam: !!v.esPam,
-          archivo: v.archivo,
-        });
-      } catch (e) {
-        ficha.fallos.push(v.archivo + ': ' + e.message);
-      }
+  for (const v of (t.lista || [])) {
+    try {
+      const r = await fetch(v.archivo, { cache: 'force-cache' });
+      if (!r.ok) { t.fallos.push(v.archivo + ' (' + r.status + ')'); continue; }
+      const texto = await r.text();
+      const a = analiza(texto, parseIGC);
+      if (!a.ok) { t.fallos.push(v.archivo + ': ' + a.motivo); continue; }
+
+      t.vuelos.push({
+        ...a,
+        nombre: a.nombre || v.piloto || v.archivo,
+        esPam: !!v.esPam,
+        archivo: v.archivo,
+      });
+    } catch (e) {
+      t.fallos.push(v.archivo + ': ' + e.message);
     }
-
-    ficha.ok = ficha.vuelos.length > 0;
-    /* el que se mira por defecto: el de Pam, que es lo natural */
-    ficha.cual = Math.max(0, ficha.vuelos.findIndex(x => x.esPam));
-    if (ficha.ok) {
-      const km = ficha.vuelos.reduce((m, x) => Math.max(m, x.resumen ? x.resumen.recorrido : 0), 0);
-      ficha.km = +(km / 1000).toFixed(1);
-    }
-    tasks.push(ficha);
   }
 
-  cache = tasks;
-  return tasks;
+  t.ok = t.vuelos.length > 0;
+  t.leido = true;
+  /* el que se mira por defecto: el de Pam, que es lo natural */
+  t.cual = Math.max(0, t.vuelos.findIndex(x => x.esPam));
+  if (t.ok) {
+    const km = t.vuelos.reduce((m, x) => Math.max(m, x.resumen ? x.resumen.recorrido : 0), 0);
+    t.km = +(km / 1000).toFixed(1);
+  }
+  return t;
 }
 
 /* ============================================================
