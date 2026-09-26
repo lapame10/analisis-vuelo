@@ -71,3 +71,53 @@ comprueba que el detector lo acierte.
 
 Los archivos se leen en el navegador. Lo único que viaja son las observaciones, y
 van cifradas.
+
+---
+
+# Los cinco pilotos y la puerta escondida
+
+De cada task hay **cinco pilotos**: `julien garcia`, `baptiste`, `honorin`,
+`andy` y `marcela`. Los vuelos son reales (de Valadares); lo que cambia es el
+nombre que se enseña.
+
+Y el nombre que trae el IGC **no manda**: manda el del índice. Si no, el nombre
+de verdad saldría igual.
+
+## Las observaciones están escondidas
+
+**No se ven al abrir la app.** Hay que hacer **tres toques seguidos en el título
+"ThermalApp"** para que aparezca el panel.
+
+Si alguien coge el teléfono y abre la app, ve un análisis de vuelo y nada más:
+no hay ni un recuadro cerrado que llame la atención ni invite a probar
+contraseñas. **La puerta no está a la vista.**
+
+Los toques tienen que ser seguidos: con más de 2 segundos entre uno y otro, la
+cuenta vuelve a cero. Y otros tres toques vuelven a esconderlo.
+
+## Y solo dos teléfonos
+
+Además de la contraseña, solo **los dos primeros teléfonos que se registren**
+pueden abrir las observaciones. El tercero no.
+
+Cada teléfono se inventa un número la primera vez y se lo queda. El servidor
+guarda los dos primeros. **La decisión la toma el servidor, no la app** — si la
+tomara la app, bastaría con abrir las herramientas del navegador para saltárselo.
+
+⚠️ **Sin conexión NO se deja entrar**, a propósito. Si se dejara, cualquiera
+podría ver las observaciones poniendo el teléfono en modo avión.
+
+## Y qué protege de verdad
+
+Esto de los dos teléfonos protege **del que coge el teléfono**. No protege de
+alguien que consiga escribir en la base de datos, que está abierta.
+
+**Lo que protege el mensaje es la contraseña:** va cifrado con AES, y sin ella no
+se lee aunque alguien llegue al canal.
+
+## La etiqueta
+
+`Etiqueta` añade un mensaje al vuelo que estás mirando y lo descarga. **No hay
+que subir nada** — el vuelo ya está ahí. El archivo que sale se abre como
+cualquier IGC: mismos puntos, misma distancia, mismo viento. Solo lleva unas
+líneas más.

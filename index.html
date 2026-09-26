@@ -142,6 +142,25 @@ tr.clic:hover td{ background:#f7f9fc }
 }
 #aviso.on{ transform:translateX(-50%) translateY(0) }
 
+/* ---------- la etiqueta ---------- */
+.ficha{ border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:#fbfaf8; margin:12px 0 4px }
+.ficha .mini{ margin:0 0 2px }
+#pSecreto textarea{
+  width:100%; min-height:110px; font:inherit; font-size:14px; padding:11px;
+  border:1px solid var(--line); border-radius:10px; resize:vertical; background:#fbfaf8;
+}
+#pSecreto input[type=password]{
+  width:100%; font:inherit; font-size:14px; padding:10px 11px; margin-top:8px;
+  border:1px solid var(--line); border-radius:10px; background:#fbfaf8;
+}
+#pSecreto label{ display:block; font-size:11px; color:var(--sub); text-transform:uppercase;
+  letter-spacing:.4px; font-weight:600; margin:14px 0 0 }
+#msgRes,#msgRes2{ margin-top:12px }
+#msgRes .ok,#msgRes2 .ok{ background:#e8f3ec; border-left:3px solid var(--ok); border-radius:8px; padding:11px 13px; font-size:13.5px }
+#msgRes .no,#msgRes2 .no{ background:#f7e9e7; border-left:3px solid var(--mal); border-radius:8px; padding:11px 13px; font-size:13.5px }
+#msgRes2 .claro{ background:#eef3f9; border-left:3px solid var(--blue); border-radius:8px;
+  padding:13px; font-size:15px; margin-top:8px; white-space:pre-wrap; word-break:break-word }
+
 /* ---------- el mensaje escondido ---------- */
 #pSecreto textarea{
   width:100%; min-height:120px; font:inherit; font-size:14px; padding:11px;
@@ -295,7 +314,11 @@ tr.clic:hover td{ background:#f7f9fc }
       <div id="termicas"></div>
     </div>
 
-    <div class="card">
+    <!-- ===== ESTA TARJETA EMPIEZA OCULTA =====
+         No se ve al abrir la app. Aparece con TRES toques seguidos en el titulo
+         "ThermalApp". Y una vez visible sigue pidiendo las dos cosas: que sea uno
+         de los dos telefonos, y la contrasena del equipo. -->
+    <div class="card" id="cardObs" style="display:none">
       <h3>Observaciones <span class="mini">sobre este task</span></h3>
       <div id="obs"></div>
     </div>
@@ -310,50 +333,56 @@ tr.clic:hover td{ background:#f7f9fc }
   <!-- ============ PANTALLA 3: NOTAS DEL VUELO ============ -->
   <!-- las notas ahora son las Observaciones del task -->
 
-  <!-- ============ PANTALLA 4: MENSAJE ESCONDIDO ============ -->
-  <section class="pant" id="pSecreto">
-    <h2 style="margin:0 0 4px;font-size:19px">Mensaje escondido</h2>
-    <p class="mini mb">Un archivo de vuelo que además lleva un mensaje dentro.
-    Se abre como cualquier IGC, el análisis funciona igual, y sin la contraseña
-    no hay forma de saber que lleva algo.</p>
+  <!-- ============ PANTALLA 4: ETIQUETA ============
+     Pam: "pusiste algo como etiquete, que me encanta, solo que me pide subir un
+     archivo". Tenia razon: los vuelos ahora son FIJOS, asi que no hay nada que
+     subir. La etiqueta va sobre el vuelo del task que estas mirando.
 
-    <div class="caja2">
-      <h3>Escribir</h3>
-      <p class="mini">Elige un vuelo tuyo de verdad. Cuanto más normal sea el archivo,
-      menos llama la atención.</p>
-      <label>El vuelo donde esconderlo</label>
-      <select id="msgVuelo" style="width:100%;font:inherit;font-size:14px;padding:10px 11px;
-        margin-top:8px;border:1px solid var(--line);border-radius:10px;background:#fbfaf8"></select>
-      <label>El mensaje</label>
-      <textarea id="msgTexto" placeholder="Lo que quieras decir…"></textarea>
-      <label>La contraseña</label>
-      <input type="password" id="msgClave" placeholder="La que acuerden entre los dos">
-      <div class="row mt2">
-        <button class="btn" id="msgHacer">Esconder y descargar</button>
-      </div>
-      <p class="mini mt">La contraseña no sale de tu teléfono y no se guarda en ningún sitio.
-      <b>Si se pierde, el mensaje no se puede recuperar.</b></p>
-      <div id="msgRes"></div>
+     Y de paso el nombre encaja mejor: "etiquetar un vuelo" es lo que hace
+     cualquier piloto antes de pasarselo a alguien del equipo. -->
+<section class="pant" id="pSecreto">
+  <div class="card">
+    <h2 style="margin:0 0 4px;font-size:19px">Etiqueta del vuelo</h2>
+    <p class="mini" style="margin:0 0 6px">Añade una etiqueta al vuelo de este task y
+    descárgalo, listo para pasárselo a alguien del equipo.</p>
+
+    <div class="ficha">
+      <div class="mini">El vuelo</div>
+      <div style="font-size:15px"><b id="etqVuelo">—</b></div>
     </div>
 
-    <div class="caja2">
-      <h3>Leer</h3>
-      <p class="mini">Tira aquí el archivo que te llegó y pon la contraseña.</p>
-      <div id="msgDrop" style="border:2px dashed #c9c4ba;border-radius:12px;padding:24px;
-        text-align:center;background:#fbfaf8;margin-top:8px">
-        <button class="btn sec" id="msgElegir">Elegir el archivo</button>
-        <input type="file" id="msgArchivo" accept=".igc,.IGC,.txt" hidden>
-        <div class="mini mt" id="msgNombre"></div>
-      </div>
-      <label>La contraseña</label>
-      <input type="password" id="msgClaveLee" placeholder="La que acordaron">
-      <div class="row mt2">
-        <button class="btn" id="msgLeer">Leer</button>
-        <button class="btn gh" id="msgVolver">Volver al análisis</button>
-      </div>
-      <div id="msgRes2"></div>
+    <label>La etiqueta</label>
+    <textarea id="msgTexto" placeholder="Lo que quieras decir…"></textarea>
+
+    <label>La contraseña del equipo</label>
+    <input type="password" id="msgClave" placeholder="La que acordaron">
+
+    <div class="row mt2">
+      <button class="btn" id="msgHacer">Etiquetar y descargar</button>
+      <button class="btn gh" id="msgVolver">Volver al análisis</button>
     </div>
-  </section>
+    <p class="mini mt">La contraseña no sale de tu teléfono y no se guarda en ningún sitio.
+    <b>Si se pierde, la etiqueta no se puede recuperar.</b></p>
+    <div id="msgRes"></div>
+  </div>
+
+  <div class="card">
+    <h3>Leer una etiqueta</h3>
+    <p class="mini">Elige el archivo que te llegó y pon la contraseña del equipo.</p>
+    <div id="msgDrop" style="border:2px dashed #c9c4ba;border-radius:12px;padding:24px;
+      text-align:center;background:#fbfaf8;margin-top:8px">
+      <button class="btn sec" id="msgElegir">Elegir el archivo</button>
+      <input type="file" id="msgArchivo" accept=".igc,.IGC,.txt" hidden>
+      <div class="mini mt" id="msgNombre"></div>
+    </div>
+    <label>La contraseña del equipo</label>
+    <input type="password" id="msgClaveLee" placeholder="La que acordaron">
+    <div class="row mt2">
+      <button class="btn" id="msgLeer">Leer</button>
+    </div>
+    <div id="msgRes2"></div>
+  </div>
+</section>
 
 </main>
 

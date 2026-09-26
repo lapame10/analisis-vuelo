@@ -106,7 +106,17 @@ export async function leeTask(t, parseIGC, analiza) {
 
       t.vuelos.push({
         ...a,
-        nombre: a.nombre || v.piloto || v.archivo,
+        /* se guarda el TEXTO del archivo, no solo lo analizado: para etiquetar un
+           vuelo hay que escribir el IGC original palabra por palabra (el analisis
+           no sirve, perderia el formato). Son ~200 KB por vuelo y el task se
+           descarta al cambiar, asi que no se acumulan. */
+        texto,
+        /* ===== EL NOMBRE DEL INDICE MANDA =====
+           El IGC trae el nombre del piloto de verdad (HFPLTPILOTINCHARGE). Si se
+           usara ese, los nombres que Pam eligio no saldrian nunca. Manda el
+           indice; el del archivo queda solo como ultimo recurso, para un vuelo
+           que no venga en la lista. */
+        nombre: v.piloto || a.nombre || v.archivo,
         esPam: !!v.esPam,
         archivo: v.archivo,
       });

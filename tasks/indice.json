@@ -5,43 +5,36 @@
     "sitio": "Valadares",
     "vuelos": [
       {
-        "archivo": "tasks/task1/pam.igc",
-        "piloto": "Pamela Diez",
-        "esPam": true,
-        "puntos": 3603,
-        "kb": 127
-      },
-      {
         "archivo": "tasks/task1/p1117.igc",
-        "piloto": "Juan Carlos Moran",
+        "piloto": "julien garcia",
         "esPam": false,
         "puntos": 5701,
         "kb": 201
       },
       {
         "archivo": "tasks/task1/p811.igc",
-        "piloto": "Claudio Matos",
+        "piloto": "baptiste",
         "esPam": false,
         "puntos": 5521,
         "kb": 194
       },
       {
         "archivo": "tasks/task1/p1141.igc",
-        "piloto": "Vinicius Bianchi",
+        "piloto": "honorin",
         "esPam": false,
         "puntos": 5141,
         "kb": 181
       },
       {
         "archivo": "tasks/task1/p275.igc",
-        "piloto": "Ivan Colas",
+        "piloto": "andy",
         "esPam": false,
         "puntos": 4746,
         "kb": 167
       },
       {
         "archivo": "tasks/task1/p381.igc",
-        "piloto": "Isabela Sales",
+        "piloto": "marcela",
         "esPam": false,
         "puntos": 4715,
         "kb": 166
@@ -54,43 +47,36 @@
     "sitio": "Valadares",
     "vuelos": [
       {
-        "archivo": "tasks/task2/pam.igc",
-        "piloto": "Pamela Diez",
-        "esPam": true,
-        "puntos": 4107,
-        "kb": 144
-      },
-      {
         "archivo": "tasks/task2/p1117.igc",
-        "piloto": "Juan Carlos Moran",
+        "piloto": "julien garcia",
         "esPam": false,
         "puntos": 6344,
         "kb": 223
       },
       {
         "archivo": "tasks/task2/p811.igc",
-        "piloto": "Claudio Matos",
+        "piloto": "baptiste",
         "esPam": false,
         "puntos": 5928,
         "kb": 208
       },
       {
         "archivo": "tasks/task2/p26.igc",
-        "piloto": "Marcelo Sanchez Vilchez",
+        "piloto": "honorin",
         "esPam": false,
         "puntos": 5804,
         "kb": 204
       },
       {
         "archivo": "tasks/task2/p352.igc",
-        "piloto": "Raul Guerra",
+        "piloto": "andy",
         "esPam": false,
         "puntos": 5588,
         "kb": 197
       },
       {
         "archivo": "tasks/task2/p718.igc",
-        "piloto": "Emerson Miranda",
+        "piloto": "marcela",
         "esPam": false,
         "puntos": 5438,
         "kb": 191
@@ -103,43 +89,36 @@
     "sitio": "Valadares",
     "vuelos": [
       {
-        "archivo": "tasks/task3/pam.igc",
-        "piloto": "Pamela Diez",
-        "esPam": true,
-        "puntos": 5627,
-        "kb": 198
-      },
-      {
         "archivo": "tasks/task3/p1117.igc",
-        "piloto": "Juan Carlos Moran",
+        "piloto": "julien garcia",
         "esPam": false,
         "puntos": 6144,
         "kb": 216
       },
       {
         "archivo": "tasks/task3/p811.igc",
-        "piloto": "Claudio Matos",
+        "piloto": "baptiste",
         "esPam": false,
         "puntos": 6097,
         "kb": 214
       },
       {
         "archivo": "tasks/task3/p352.igc",
-        "piloto": "Raul Guerra",
+        "piloto": "honorin",
         "esPam": false,
         "puntos": 5700,
         "kb": 200
       },
       {
         "archivo": "tasks/task3/p410.igc",
-        "piloto": "Christiaan Durrant",
+        "piloto": "andy",
         "esPam": false,
         "puntos": 5450,
         "kb": 192
       },
       {
         "archivo": "tasks/task3/p219.igc",
-        "piloto": "Doug Degeorge",
+        "piloto": "marcela",
         "esPam": false,
         "puntos": 5427,
         "kb": 191
@@ -152,43 +131,36 @@
     "sitio": "Valadares",
     "vuelos": [
       {
-        "archivo": "tasks/task4/pam.igc",
-        "piloto": "Pamela Diez",
-        "esPam": true,
-        "puntos": 4229,
-        "kb": 149
-      },
-      {
         "archivo": "tasks/task4/p1117.igc",
-        "piloto": "Juan Carlos Moran",
+        "piloto": "julien garcia",
         "esPam": false,
         "puntos": 6523,
         "kb": 229
       },
       {
         "archivo": "tasks/task4/p811.igc",
-        "piloto": "Claudio Matos",
+        "piloto": "baptiste",
         "esPam": false,
         "puntos": 6501,
         "kb": 229
       },
       {
         "archivo": "tasks/task4/p503.igc",
-        "piloto": "Maycon Santos",
+        "piloto": "honorin",
         "esPam": false,
         "puntos": 5530,
         "kb": 194
       },
       {
         "archivo": "tasks/task4/p381.igc",
-        "piloto": "Isabela Sales",
+        "piloto": "andy",
         "esPam": false,
         "puntos": 5492,
         "kb": 193
       },
       {
         "archivo": "tasks/task4/p352.igc",
-        "piloto": "Raul Guerra",
+        "piloto": "marcela",
         "esPam": false,
         "puntos": 5331,
         "kb": 188
@@ -201,43 +173,36 @@
     "sitio": "Valadares",
     "vuelos": [
       {
-        "archivo": "tasks/task5/pam.igc",
-        "piloto": "Pamela Diez",
-        "esPam": true,
-        "puntos": 4674,
-        "kb": 164
-      },
-      {
         "archivo": "tasks/task5/p811.igc",
-        "piloto": "Claudio Matos",
+        "piloto": "julien garcia",
         "esPam": false,
         "puntos": 6486,
         "kb": 228
       },
       {
         "archivo": "tasks/task5/p1117.igc",
-        "piloto": "Juan Carlos Moran",
+        "piloto": "baptiste",
         "esPam": false,
         "puntos": 6442,
         "kb": 227
       },
       {
         "archivo": "tasks/task5/p1411.igc",
-        "piloto": "Carlos Hernandez",
+        "piloto": "honorin",
         "esPam": false,
         "puntos": 5594,
         "kb": 197
       },
       {
         "archivo": "tasks/task5/p352.igc",
-        "piloto": "Raul Guerra",
+        "piloto": "andy",
         "esPam": false,
         "puntos": 5547,
         "kb": 195
       },
       {
         "archivo": "tasks/task5/p382.igc",
-        "piloto": "Gabriel Rabello",
+        "piloto": "marcela",
         "esPam": false,
         "puntos": 5184,
         "kb": 182
@@ -250,43 +215,36 @@
     "sitio": "Valadares",
     "vuelos": [
       {
-        "archivo": "tasks/task6/pam.igc",
-        "piloto": "Pamela Diez",
-        "esPam": true,
-        "puntos": 3752,
-        "kb": 132
-      },
-      {
         "archivo": "tasks/task6/p1117.igc",
-        "piloto": "Juan Carlos Moran",
+        "piloto": "julien garcia",
         "esPam": false,
         "puntos": 6350,
         "kb": 223
       },
       {
-        "archivo": "tasks/task6/p219.igc",
-        "piloto": "Doug Degeorge",
+        "archivo": "tasks/task6/p718.igc",
+        "piloto": "baptiste",
         "esPam": false,
         "puntos": 5914,
         "kb": 208
       },
       {
-        "archivo": "tasks/task6/p718.igc",
-        "piloto": "Emerson Miranda",
+        "archivo": "tasks/task6/p219.igc",
+        "piloto": "honorin",
         "esPam": false,
         "puntos": 5914,
         "kb": 208
       },
       {
         "archivo": "tasks/task6/p608.igc",
-        "piloto": "Rodrigues Tiago",
+        "piloto": "andy",
         "esPam": false,
         "puntos": 5750,
         "kb": 202
       },
       {
         "archivo": "tasks/task6/p1216.igc",
-        "piloto": "Andrii Chugaiev",
+        "piloto": "marcela",
         "esPam": false,
         "puntos": 5678,
         "kb": 200
@@ -299,43 +257,36 @@
     "sitio": "Valadares",
     "vuelos": [
       {
-        "archivo": "tasks/task7/pam.igc",
-        "piloto": "Pamela Diez",
-        "esPam": true,
-        "puntos": 4096,
-        "kb": 144
-      },
-      {
         "archivo": "tasks/task7/p401.igc",
-        "piloto": "Lucilei Dal Pozzo",
+        "piloto": "julien garcia",
         "esPam": false,
         "puntos": 5764,
         "kb": 203
       },
       {
         "archivo": "tasks/task7/p718.igc",
-        "piloto": "Emerson Miranda",
+        "piloto": "baptiste",
         "esPam": false,
         "puntos": 5764,
         "kb": 203
       },
       {
         "archivo": "tasks/task7/p201.igc",
-        "piloto": "Chaeden Luebberke",
+        "piloto": "honorin",
         "esPam": false,
         "puntos": 5763,
         "kb": 203
       },
       {
         "archivo": "tasks/task7/p691.igc",
-        "piloto": "Enderson Nascimento Moreira",
+        "piloto": "andy",
         "esPam": false,
         "puntos": 5762,
         "kb": 203
       },
       {
         "archivo": "tasks/task7/p410.igc",
-        "piloto": "Christiaan Durrant",
+        "piloto": "marcela",
         "esPam": false,
         "puntos": 5760,
         "kb": 203

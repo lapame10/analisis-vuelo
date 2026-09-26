@@ -6,6 +6,7 @@ import * as Graf from './grafico.js';
 import { esconde, lee, llevaAlgo } from './secreto.js';
 import * as Canal from './canal.js';
 import { leeIndice, leeTask, tituloDe, subtituloDe } from './tasks.js';
+import * as Tel from './dispositivo.js';
 
 /* ============================================================
    El estado
@@ -61,6 +62,7 @@ async function arranca() {
   document.getElementById('pAnalisis').classList.add('on');
   document.getElementById('bMensaje').style.display = '';
 
+  enganchaLosToques();
   TASKS = await leeIndice();
   pintaSelector();
 
@@ -353,11 +355,31 @@ function escapa(s) {
 document.getElementById('bMensaje').onclick = () => {
   document.querySelectorAll('.pant').forEach(x => x.classList.remove('on'));
   document.getElementById('pSecreto').classList.add('on');
-  /* el desplegable de vuelos, con los que hay cargados */
-  const sel = document.getElementById('msgVuelo');
-  sel.innerHTML = vuelos.map((v, i) =>
-    `<option value="${i}">${escapa(v.nombre)} · ${v.resumen ? (v.resumen.recorrido / 1000).toFixed(1) : '?'} km</option>`
-  ).join('') || '<option value="">(no hay vuelos cargados)</option>';
+
+  /* ===== SOBRE QUE VUELO VA LA ETIQUETA =====
+     Antes esto era un desplegable con todos los vuelos cargados a mano. Ya no:
+     los vuelos son fijos y la etiqueta va sobre EL QUE ESTAS MIRANDO. Que es lo
+     que tiene sentido — etiquetas el vuelo que acabas de analizar. */
+  const v = vuelos[cual];
+  const e = document.getElementById('etqVuelo');
+  if (e) {
+    e.textContent = v
+      ? (v.nombre || 'vuelo') + (v.resumen ? ' · ' + (v.resumen.recorrido / 1000).toFixed(1) + ' km' : '')
+      : '—';
+  }
+  /* se limpia lo de la vez anterior, para no dejar un mensaje viejo a la vista */
+  const t = document.getElementById('msgTexto');
+  const c = document.getElementById('msgClave');
+  const r = document.getElementById('msgRes');
+  if (t) t.value = '';
+  if (c) c.value = '';
+  if (r) r.innerHTML = '';
+  const n = document.getElementById('msgNombre');
+  if (n) n.textContent = '';
+  const r2 = document.getElementById('msgRes2');
+  if (r2) r2.innerHTML = '';
+  archivoParaLeer = null;
+
   window.scrollTo(0, 0);
 };
 
@@ -370,39 +392,34 @@ document.getElementById('msgVolver').onclick = () => {
 
 /* ---------- ESCRIBIR ---------- */
 document.getElementById('msgHacer').onclick = async () => {
-  const i = +document.getElementById('msgVuelo').value;
   const texto = document.getElementById('msgTexto').value;
   const clave = document.getElementById('msgClave').value;
   const res = document.getElementById('msgRes');
 
-  const v = vuelos[i];
-  if (!v) { res.innerHTML = '<div class="no">Primero carga un vuelo.</div>'; return; }
-  if (!texto.trim()) { res.innerHTML = '<div class="no">Escribe el mensaje.</div>'; return; }
+  /* ===== EL VUELO ES EL QUE ESTAS MIRANDO =====
+     Ya no hay que elegir archivo ni vuelo: se etiqueta el vuelo del task que
+     tienes abierto. */
+  const v = vuelos[cual];
+  if (!v || !v.texto) {
+    res.innerHTML = '<div class="no">No hay ningún vuelo abierto. Elige un task primero.</div>';
+    return;
+  }
+  if (!texto.trim()) { res.innerHTML = '<div class="no">Escribe la etiqueta.</div>'; return; }
   if (clave.length < 6) {
     res.innerHTML = '<div class="no">La contraseña, de al menos 6 caracteres. ' +
-      'Es lo único que protege el mensaje: cuanto más larga, mejor.</div>';
+      'Es lo único que protege la etiqueta: cuanto más larga, mejor.</div>';
     return;
   }
 
-  res.innerHTML = '<div class="mini">Cifrando…</div>';
+  res.innerHTML = '<div class="mini">Etiquetando…</div>';
 
-  /* el archivo original: se vuelve a leer del disco, no se reconstruye. Asi el
-     vuelo que viaja es EXACTAMENTE el que subiste. */
-  let original;
-  try {
-    const f = v.archivoOriginal;
-    original = f ? await f.text() : null;
-  } catch (e) { original = null; }
-  if (!original) {
-    res.innerHTML = '<div class="no">No se encuentra el archivo original. Vuélvelo a subir.</div>';
-    return;
-  }
-
-  const r = await esconde(original, texto, clave);
+  const r = await esconde(v.texto, texto, clave);
   if (!r.ok) { res.innerHTML = '<div class="no">' + escapa(r.motivo) + '</div>'; return; }
 
-  /* se descarga */
-  const nombre = (v.archivo || 'vuelo.igc').replace(/\.igc$/i, '') + '-igc.igc';
+  /* el nombre del archivo: el del piloto, para que parezca lo que es */
+  const quien = (v.nombre || 'vuelo').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const nombre = quien + '.igc';
+
   const blob = new Blob([r.texto], { type: 'application/octet-stream' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -411,8 +428,8 @@ document.getElementById('msgHacer').onclick = async () => {
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 
   res.innerHTML = `<div class="ok"><b>Listo.</b> Se ha descargado <b>${escapa(nombre)}</b>.<br>
-    Lleva el mensaje en ${r.trozos} comentario(s). Ábrelo en el análisis y verás el mismo vuelo,
-    con los mismos datos: el mensaje no toca ni un punto del track.<br><br>
+    Lleva la etiqueta en ${r.trozos} comentario(s). Ábrelo en el análisis y verás el mismo vuelo,
+    con los mismos datos: la etiqueta no toca ni un punto del track.<br><br>
     Mándalo como mandarías cualquier vuelo. Quien no tenga la contraseña verá un archivo de vuelo.</div>`;
 };
 
@@ -462,47 +479,69 @@ let canal = null;
 let tLatido = null;
 let equipo = null;    /* la contrasena de equipo, en memoria mientras la app vive */
 
+/* ============================================================
+   LO QUE ESTA ESCONDIDO
+   ============================================================
+   El panel de observaciones NO se ve al abrir. Hay que hacer TRES toques en el
+   titulo "ThermalApp" para que aparezca.
+
+   Por que: Pam lo pidio asi. Si alguien coge el telefono y abre la app, ve un
+   analisis de vuelo y nada mas: no hay ni un recuadro cerrado que llame la
+   atencion ni invite a probar contraseñas. La puerta no esta a la vista.
+
+   Y ademas de los tres toques hacen falta las dos cosas:
+     - la contrasena del equipo (que cifra los mensajes)
+     - que este telefono sea uno de los DOS autorizados (ver dispositivo.js)
+
+   Los toques tienen que ser seguidos: si pasan mas de 2 segundos entre uno y
+   otro, la cuenta vuelve a cero. Asi no se abre solo por tocar el titulo por
+   casualidad.
+   ============================================================ */
+let escondido = true;      /* las observaciones estan ocultas */
+let toques = 0;
+let ultimoToque = 0;
+
 /* ---------- las observaciones del task que se está mirando ----------
    Con la contrasena: se ven y se escribe.
    Sin ella: un recuadro cerrado que dice que hay observaciones y que hace falta
    la contrasena del equipo. Nada más: no se enseña ni un trozo. */
 function pintaObservaciones() {
   const c = document.getElementById('obs');
-  if (!c) return;
+  const card = document.getElementById('cardObs');
+  if (!c || !card) return;
 
-  const guardada = (() => { try { return equipo || localStorage.getItem('pad-equipo'); } catch (e) { return equipo; } })();
+  /* ===== SIN LOS TRES TOQUES, NO HAY NADA =====
+     Ni panel, ni recuadro cerrado, ni candado. La tarjeta entera desaparece. Si
+     alguien abre la app, ve un analisis de vuelo y nada mas: no hay donde
+     pinchar, ni una pista de que ahi haya algo. */
+  if (escondido) {
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = '';
 
-  /* ---- SIN contrasena: el recuadro cerrado ---- */
+  /* ---- ya salio: se ve el panel ---- */
   if (!canal || !canal.clave) {
     c.innerHTML = `
       <div class="cerrado">
         <div class="candado">🔒</div>
         <p><b>Observaciones privadas</b></p>
-        <p class="mini">Este task tiene las observaciones de la escuadra. Hace falta la
-        contraseña del equipo para verlas.</p>
+        <p class="mini">Este task tiene las observaciones de la escuadra.</p>
         <input type="password" id="obsIn" placeholder="Contraseña del equipo"
           style="width:100%;max-width:280px;font:inherit;font-size:14px;padding:10px 11px;
           border:1px solid var(--line);border-radius:10px;background:#fff;text-align:center">
         <div class="mt2"><button class="btn" id="obsAbrir">Desbloquear</button></div>
+        <div id="obsAviso"></div>
       </div>`;
+    const guardada = (() => { try { return equipo || localStorage.getItem('pad-equipo'); } catch (e) { return equipo; } })();
     if (guardada) document.getElementById('obsIn').value = guardada;
-    document.getElementById('obsAbrir').onclick = async () => {
-      const v = document.getElementById('obsIn').value;
-      const n = Canal.nuevoCanal(v, taskActual + 1);
-      if (!n.ok) { aviso(n.motivo, 4200); return; }
-      const r = await Canal.abre(n);
-      if (!r.ok) { aviso(r.motivo, 4200); return; }
-      equipo = v;
-      try { localStorage.setItem('pad-equipo', v); } catch (e) {}
-      canal = n;
-      await trae();
-      pintaObservaciones();
-      latido();
-    };
+    document.getElementById('obsAbrir').onclick = abreConContrasena;
+    const inp = document.getElementById('obsIn');
+    if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') abreConContrasena(); });
     return;
   }
 
-  /* ---- CON contrasena: la lista y el escribir ---- */
+  /* ---- abierto: la lista y el escribir ---- */
   const conTexto = canal.mensajes.filter(m => !m.ilegible);
   let html = '';
   if (!conTexto.length) {
@@ -519,7 +558,9 @@ function pintaObservaciones() {
       <button class="btn" id="cEnviar">Añadir</button>
     </div>
     <div id="cEstado"></div>
-    <div class="row mt"><button class="btn gh" id="cSalir">Cerrar sesión de equipo</button></div>`;
+    <div class="row mt">
+      <button class="btn gh" id="cCerrar">Volver al análisis</button>
+    </div>`;
 
   const malos = canal.mensajes.filter(m => m.ilegible).length;
   document.getElementById('cEstado').innerHTML =
@@ -538,12 +579,94 @@ function pintaObservaciones() {
   document.getElementById('cTexto').addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('cEnviar').click(); }
   });
-  document.getElementById('cSalir').onclick = () => {
-    try { localStorage.removeItem('pad-equipo'); } catch (e) {}
-    equipo = null; canal = null;
+  /* "Volver al analisis" vuelve a ESCONDER: no deja el panel a la vista para el
+     que mire despues. */
+  document.getElementById('cCerrar').onclick = () => {
+    escondido = true;
+    toques = 0;
     clearInterval(tLatido);
     pintaObservaciones();
   };
+}
+
+/* ============================================================
+   Abrir con la contraseña
+   ============================================================
+   Aqui van las dos comprobaciones, y en este orden:
+
+     1. el telefono: si no es uno de los dos autorizados, se acaba aqui
+     2. la contraseña: cifra los mensajes, y sin ella no se lee nada
+
+   El orden importa: asi el que coge un telefono que no es suyo no llega ni a
+   intentar adivinar la contraseña.
+   ============================================================ */
+async function abreConContrasena() {
+  const v = document.getElementById('obsIn') ? document.getElementById('obsIn').value : '';
+  const av = document.getElementById('obsAviso');
+  const di = (t, clase) => { if (av) av.innerHTML = '<div class="' + clase + '" style="margin-top:10px">' + t + '</div>'; };
+
+  if (!v || v.length < 6) { di('La contraseña, de al menos 6 caracteres.', 'no'); return; }
+
+  /* ---- 1) el telefono ---- */
+  di('<span class="mini">Comprobando el teléfono…</span>', 'mini');
+  const tel = await Tel.registra();
+  if (!tel.dentro) {
+    di('<b>Este teléfono no puede abrir las observaciones.</b><br>' +
+       '<span class="mini">' + escapa(tel.motivo || '') + '</span>' +
+       (tel.sinRed ? '<br><span class="mini">Prueba con conexión.</span>' : '') , 'no');
+    return;
+  }
+
+  /* ---- 2) la contrasena ---- */
+  const n = Canal.nuevoCanal(v, taskActual + 1);
+  if (!n.ok) { di(escapa(n.motivo), 'no'); return; }
+
+  di('<span class="mini">Abriendo…</span>', 'mini');
+  const r = await Canal.abre(n);
+  if (!r.ok) { di(escapa(r.motivo), 'no'); return; }
+
+  equipo = v;
+  try { localStorage.setItem('pad-equipo', v); } catch (e) {}
+  canal = n;
+  await trae();
+  pintaObservaciones();
+  latido();
+}
+
+/* ============================================================
+   Los tres toques
+   ============================================================
+   En el titulo "ThermalApp". Seguidos: con mas de 2 segundos entre uno y otro,
+   la cuenta vuelve a cero.
+   ============================================================ */
+function enganchaLosToques() {
+  const h = document.querySelector('header h1');
+  if (!h) return;
+  h.addEventListener('click', () => {
+    const ahora = Date.now();
+    toques = (ahora - ultimoToque > 2000) ? 1 : toques + 1;
+    ultimoToque = ahora;
+    if (toques >= 3) {
+      toques = 0;
+      if (escondido) {
+        escondido = false;
+        /* si ya habia contrasena guardada, se abre sola; si no, se pide */
+        if (equipo) abreConContrasena();
+        else pintaObservaciones();
+        setTimeout(() => {
+          const t = document.getElementById('cardObs');
+          if (t) t.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 120);
+      } else {
+        escondido = true;
+        clearInterval(tLatido);
+        pintaObservaciones();
+      }
+    }
+  });
+  /* que se pueda hacer con el teclado tambien, por accesibilidad */
+  h.style.cursor = 'default';
+  h.setAttribute('title', '');
 }
 
 
