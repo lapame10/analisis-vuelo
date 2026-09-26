@@ -48,3 +48,57 @@ del norte a 20 km/h y dice "del norte a 20", funciona.
 ## Nada sale de tu teléfono
 
 Los archivos se leen en el navegador. No hay servidor, no se sube nada.
+
+---
+
+# Mensajes escondidos
+
+Un archivo de vuelo que **además** lleva un mensaje dentro. Solo lo lee quien
+tenga la contraseña.
+
+## Por qué un IGC es un buen escondite
+
+Todo el mundo comparte IGCs — *«pásame tu track de ayer»* es lo más normal entre
+pilotos. Nadie sospecha de un archivo de vuelo.
+
+Y el formato trae sitios que ningún programa mira. Los **registros `C`**
+(comentarios) son legales en el estándar, cada fabricante escribe ahí lo que
+quiere, y **ningún programa de análisis los lee**.
+
+## Cómo va cifrado
+
+**AES-GCM** con la clave derivada de la contraseña con **PBKDF2 a 200.000
+vueltas** — el mismo cifrado que usa un banco. Todo con la Web Crypto del
+navegador: sin librerías, sin servidor.
+
+Dentro del archivo no se ve **ni que hay un mensaje**. Un archivito con
+contraseña que no es, no da nada.
+
+## El disfraz
+
+Los trozos van en **hexadecimal**, no en base64 (que canta muchísimo: mayúsculas,
+minúsculas y símbolos). Y con el formato que usan de verdad los varios:
+
+```
+Cvario,1,3,2a3005130df71656c707e3507c91ebf06aa981bb52cb868787b976c04513
+Cvario,2,3,3a0136568e556301b63964925487f40636925be846e2adfa07a4b46517de
+Cvario,3,3,ea42166af4cb
+```
+
+Para quien abra el archivo, son tres comentarios del aparato.
+
+## El track NO se toca
+
+**Comprobado en los tests:** después de esconder el mensaje, el archivo tiene los
+mismos 1.687 puntos, la misma distancia, el mismo viento y las mismas térmicas.
+El análisis sale idéntico. Solo se han añadido líneas.
+
+## Los tests
+
+```
+node pruebas/test-secreto.mjs
+```
+
+29 comprobaciones. Incluyen que la contraseña equivocada **no** saque el mensaje,
+que un archivo sin mensaje lo diga claro, que un trozo cortado se detecte, y que
+acentos, japonés y emoji sobrevivan.

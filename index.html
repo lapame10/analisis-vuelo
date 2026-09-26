@@ -135,6 +135,27 @@ tr.clic:hover td{ background:#f7f9fc }
 }
 #aviso.on{ transform:translateX(-50%) translateY(0) }
 
+/* ---------- el mensaje escondido ---------- */
+#pSecreto textarea{
+  width:100%; min-height:120px; font:inherit; font-size:14px; padding:11px;
+  border:1px solid var(--line); border-radius:10px; resize:vertical; background:#fbfaf8;
+}
+#pSecreto input[type=password]{
+  width:100%; font:inherit; font-size:14px; padding:10px 11px; margin-top:8px;
+  border:1px solid var(--line); border-radius:10px; background:#fbfaf8;
+}
+#pSecreto select{ width:100%; font:inherit; font-size:14px; padding:10px 11px;
+  margin-top:8px; border:1px solid var(--line); border-radius:10px; background:#fbfaf8 }
+#pSecreto label{ display:block; font-size:11px; color:var(--sub); text-transform:uppercase;
+  letter-spacing:.4px; font-weight:600; margin:14px 0 0 }
+.caja2{ border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:12px; background:var(--panel) }
+.caja2 h3{ margin:0 0 4px; font-size:15px }
+#msgRes,#msgRes2{ margin-top:12px }
+#msgRes .ok,#msgRes2 .ok{ background:#e8f3ec; border-left:3px solid var(--ok); border-radius:8px; padding:11px 13px; font-size:13.5px }
+#msgRes .no,#msgRes2 .no{ background:#f7e9e7; border-left:3px solid var(--mal); border-radius:8px; padding:11px 13px; font-size:13.5px }
+#msgRes2 .claro{ background:#eef3f9; border-left:3px solid var(--blue); border-radius:8px;
+  padding:13px; font-size:15px; margin-top:8px; white-space:pre-wrap; word-break:break-word }
+
 /* ---------- el detalle del cursor ---------- */
 #lectura{ font-size:12.5px; color:var(--sub); min-height:18px; font-variant-numeric:tabular-nums }
 #lectura b{ color:var(--ink) }
@@ -145,6 +166,7 @@ tr.clic:hover td{ background:#f7f9fc }
 <header>
   <div class="in">
     <h1>Análisis de vuelo<small id="subtitulo">Sube tus archivos IGC</small></h1>
+    <button id="bSecreto" style="display:none">Mensaje</button>
     <button id="bCargar" style="display:none">Añadir IGC</button>
     <button id="bVaciar" style="display:none">Vaciar</button>
   </div>
@@ -159,6 +181,7 @@ tr.clic:hover td{ background:#f7f9fc }
         <h2>Tira aquí tus archivos IGC</h2>
         <p>Uno o varios. Se quedan en tu teléfono: no se sube nada a ningún sitio.</p>
         <button class="btn" id="bElegir">Elegir archivos</button>
+        <div class="mt2"><button class="btn gh" id="bSecreto2">Tengo un mensaje escondido</button></div>
         <input type="file" id="input" accept=".igc,.IGC,.txt" multiple hidden>
       </div>
       <div class="pie">
@@ -219,6 +242,51 @@ tr.clic:hover td{ background:#f7f9fc }
 
   </section>
 
+  <!-- ============ PANTALLA 3: MENSAJE ESCONDIDO ============ -->
+  <section class="pant" id="pSecreto">
+    <h2 style="margin:0 0 4px;font-size:19px">Mensaje escondido</h2>
+    <p class="mini mb">Un archivo de vuelo que además lleva un mensaje dentro.
+    Se abre como cualquier IGC, el análisis funciona igual, y sin la contraseña
+    no hay forma de saber que lleva algo.</p>
+
+    <div class="caja2">
+      <h3>Escribir</h3>
+      <p class="mini">Elige un vuelo tuyo de verdad. Cuanto más normal sea el archivo,
+      menos llama la atención.</p>
+      <label>El vuelo donde esconderlo</label>
+      <select id="msgVuelo" style="width:100%;font:inherit;font-size:14px;padding:10px 11px;
+        margin-top:8px;border:1px solid var(--line);border-radius:10px;background:#fbfaf8"></select>
+      <label>El mensaje</label>
+      <textarea id="msgTexto" placeholder="Lo que quieras decir…"></textarea>
+      <label>La contraseña</label>
+      <input type="password" id="msgClave" placeholder="La que acuerden entre los dos">
+      <div class="row mt2">
+        <button class="btn" id="msgHacer">Esconder y descargar</button>
+      </div>
+      <p class="mini mt">La contraseña no sale de tu teléfono y no se guarda en ningún sitio.
+      <b>Si se pierde, el mensaje no se puede recuperar.</b></p>
+      <div id="msgRes"></div>
+    </div>
+
+    <div class="caja2">
+      <h3>Leer</h3>
+      <p class="mini">Tira aquí el archivo que te llegó y pon la contraseña.</p>
+      <div id="msgDrop" style="border:2px dashed #c9c4ba;border-radius:12px;padding:24px;
+        text-align:center;background:#fbfaf8;margin-top:8px">
+        <button class="btn sec" id="msgElegir">Elegir el archivo</button>
+        <input type="file" id="msgArchivo" accept=".igc,.IGC,.txt" hidden>
+        <div class="mini mt" id="msgNombre"></div>
+      </div>
+      <label>La contraseña</label>
+      <input type="password" id="msgClaveLee" placeholder="La que acordaron">
+      <div class="row mt2">
+        <button class="btn" id="msgLeer">Leer</button>
+        <button class="btn gh" id="msgVolver">Volver al análisis</button>
+      </div>
+      <div id="msgRes2"></div>
+    </div>
+  </section>
+
 </main>
 
 <div id="aviso"></div>
@@ -228,6 +296,7 @@ import { parseIGC } from './igc.js';
 import { analiza, fmt, distancia } from './vuelo.js';
 import * as Mapa from './mapa.js';
 import * as Graf from './grafico.js';
+import { esconde, lee, llevaAlgo } from './secreto.js';
 
 /* ============================================================
    El estado
@@ -280,6 +349,9 @@ async function cargaArchivos(archivos) {
       ...r,
       nombre,
       archivo: f.name,
+      /* se guarda el File tal cual: al esconder un mensaje hay que escribir el
+         archivo ORIGINAL, no rehacerlo desde los puntos */
+      archivoOriginal: f,
       color: COLORES[vuelos.length % COLORES.length],
     });
     bien++;
@@ -312,6 +384,7 @@ function abreAnalisis() {
   document.getElementById('pAnalisis').classList.add('on');
   document.getElementById('bCargar').style.display = '';
   document.getElementById('bVaciar').style.display = '';
+  document.getElementById('bSecreto').style.display = '';
 
   /* el mapa se monta la primera vez, y sólo entonces: Leaflet no funciona si el
      contenedor está oculto (mide cero) */
@@ -495,6 +568,121 @@ function horaDe(t) {
 function escapa(s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
+
+/* ============================================================
+   EL MENSAJE ESCONDIDO
+   ============================================================
+   Dos cosas: esconder un mensaje en un vuelo, y leer uno que te llego.
+
+   El mensaje va cifrado con AES y metido en los comentarios del IGC, que es
+   donde los varios escriben sus cosas y ningun programa mira. El vuelo queda
+   intacto: se abre igual y el analisis sale igual.
+   ============================================================ */
+
+/* ---------- ir y volver de la pantalla ---------- */
+const abreSecreto = () => {
+  document.querySelectorAll('.pant').forEach(x => x.classList.remove('on'));
+  document.getElementById('pSecreto').classList.add('on');
+  window.scrollTo(0, 0);
+};
+document.getElementById('bSecreto2').onclick = abreSecreto;
+document.getElementById('bSecreto').onclick = () => {
+  document.querySelectorAll('.pant').forEach(x => x.classList.remove('on'));
+  document.getElementById('pSecreto').classList.add('on');
+  /* el desplegable de vuelos, con los que hay cargados */
+  const sel = document.getElementById('msgVuelo');
+  sel.innerHTML = vuelos.map((v, i) =>
+    `<option value="${i}">${escapa(v.nombre)} · ${v.resumen ? (v.resumen.recorrido / 1000).toFixed(1) : '?'} km</option>`
+  ).join('') || '<option value="">(no hay vuelos cargados)</option>';
+  window.scrollTo(0, 0);
+};
+
+document.getElementById('msgVolver').onclick = () => {
+  document.getElementById('pSecreto').classList.remove('on');
+  document.getElementById(pAnalisis.classList.contains('on') ? 'pAnalisis' : 'pCarga');
+  document.getElementById('pAnalisis').classList.add('on');
+  window.scrollTo(0, 0);
+};
+
+/* ---------- ESCRIBIR ---------- */
+document.getElementById('msgHacer').onclick = async () => {
+  const i = +document.getElementById('msgVuelo').value;
+  const texto = document.getElementById('msgTexto').value;
+  const clave = document.getElementById('msgClave').value;
+  const res = document.getElementById('msgRes');
+
+  const v = vuelos[i];
+  if (!v) { res.innerHTML = '<div class="no">Primero carga un vuelo.</div>'; return; }
+  if (!texto.trim()) { res.innerHTML = '<div class="no">Escribe el mensaje.</div>'; return; }
+  if (clave.length < 6) {
+    res.innerHTML = '<div class="no">La contraseña, de al menos 6 caracteres. ' +
+      'Es lo único que protege el mensaje: cuanto más larga, mejor.</div>';
+    return;
+  }
+
+  res.innerHTML = '<div class="mini">Cifrando…</div>';
+
+  /* el archivo original: se vuelve a leer del disco, no se reconstruye. Asi el
+     vuelo que viaja es EXACTAMENTE el que subiste. */
+  let original;
+  try {
+    const f = v.archivoOriginal;
+    original = f ? await f.text() : null;
+  } catch (e) { original = null; }
+  if (!original) {
+    res.innerHTML = '<div class="no">No se encuentra el archivo original. Vuélvelo a subir.</div>';
+    return;
+  }
+
+  const r = await esconde(original, texto, clave);
+  if (!r.ok) { res.innerHTML = '<div class="no">' + escapa(r.motivo) + '</div>'; return; }
+
+  /* se descarga */
+  const nombre = (v.archivo || 'vuelo.igc').replace(/\.igc$/i, '') + '-igc.igc';
+  const blob = new Blob([r.texto], { type: 'application/octet-stream' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = nombre;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+
+  res.innerHTML = `<div class="ok"><b>Listo.</b> Se ha descargado <b>${escapa(nombre)}</b>.<br>
+    Lleva el mensaje en ${r.trozos} comentario(s). Ábrelo en el análisis y verás el mismo vuelo,
+    con los mismos datos: el mensaje no toca ni un punto del track.<br><br>
+    Mándalo como mandarías cualquier vuelo. Quien no tenga la contraseña verá un archivo de vuelo.</div>`;
+};
+
+/* ---------- LEER ---------- */
+let archivoParaLeer = null;
+document.getElementById('msgElegir').onclick = () => document.getElementById('msgArchivo').click();
+document.getElementById('msgArchivo').onchange = async () => {
+  const f = document.getElementById('msgArchivo').files[0];
+  if (!f) return;
+  archivoParaLeer = f;
+  document.getElementById('msgNombre').textContent = f.name;
+  document.getElementById('msgArchivo').value = '';
+  /* si lleva algo, se dice sin pedir contrasena: asi se sabe que llegó bien */
+  const t = await f.text();
+  const res = document.getElementById('msgRes2');
+  if (llevaAlgo(t)) res.innerHTML = '<div class="mini">Este archivo lleva un mensaje. Pon la contraseña.</div>';
+  else res.innerHTML = '<div class="mini">Este archivo no parece llevar ningún mensaje.</div>';
+};
+
+document.getElementById('msgLeer').onclick = async () => {
+  const res = document.getElementById('msgRes2');
+  const clave = document.getElementById('msgClaveLee').value;
+  if (!archivoParaLeer) { res.innerHTML = '<div class="no">Elige el archivo.</div>'; return; }
+  if (!clave) { res.innerHTML = '<div class="no">Pon la contraseña.</div>'; return; }
+
+  res.innerHTML = '<div class="mini">Descifrando…</div>';
+  const t = await archivoParaLeer.text();
+  const r = await lee(t, clave);
+
+  if (!r.ok) { res.innerHTML = '<div class="no">' + escapa(r.motivo) + '</div>'; return; }
+  res.innerHTML = '<div class="ok"><b>Mensaje:</b></div>' +
+    '<div class="claro">' + escapa(r.mensaje) + '</div>' +
+    '<div class="mini mt">' + r.trozos + ' trozo(s) · ' + r.bytes + ' bytes cifrados</div>';
+};
 
 /* ============================================================
    Los botones y la carga
