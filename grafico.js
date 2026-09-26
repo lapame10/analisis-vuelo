@@ -172,7 +172,9 @@ export function graficaVuelo(contenedores, vuelo, otros = [], opciones = {}) {
 
   const seg = p => p.t;
   /* muestreo: un grafico de 600 puntos de ancho no necesita 1700 */
-  const salto = Math.max(1, Math.floor(vuelo.puntos.length / 700));
+  /* con 400 puntos ya se ve la forma del vuelo; mas es trabajo de dibujo que no
+     se nota */
+  const salto = Math.max(1, Math.floor(vuelo.puntos.length / 400));
   const toma = (f) => {
     const out = [];
     for (let i = 0; i < vuelo.puntos.length; i += salto) {
@@ -184,7 +186,7 @@ export function graficaVuelo(contenedores, vuelo, otros = [], opciones = {}) {
   };
 
   const seriesGris = (f) => otros.map((o, i) => {
-    const s = Math.max(1, Math.floor(o.puntos.length / 200));
+    const s = Math.max(1, Math.floor(o.puntos.length / 120));
     const pts = [];
     for (let j = 0; j < o.puntos.length; j += s) {
       const v = f(o.puntos[j]);
@@ -222,6 +224,19 @@ export function graficaVuelo(contenedores, vuelo, otros = [], opciones = {}) {
   /* ---------- 4) la barra de actividad ----------
      Una franja fina, de un pixel por punto, naranja donde subia y azul donde
      planeaba. Es lo que hace que se identifiquen las termicas de un golpe. */
+  /* ---------- 4) la barra de actividad ----------
+     ===== UN RECT POR PUNTO NO: SE AGRUPAN =====
+     La primera version pintaba un <rect> por cada punto del vuelo. Con 5.600
+     puntos eran 5.600 elementos SVG, y el navegador se atragantaba (era lo que
+     hacia que la app tardara una eternidad en abrir).
+
+     Ahora se agrupa por color: se recorre el vuelo y solo se abre un rect nuevo
+     cuando el color CAMBIA de verdad, saltandose los cambios de menos de un
+     segundo (que son ruido del vario, no informacion). Asi pasan de 5.600 a
+     unas decenas.
+
+     Y si aun asi quedaran muchisimos, se agrupa mas: la barra mide 600 px, no
+     tiene sentido meterle 2.000 trozos. */
   if (contenedores.banda) {
     const ancho = 600, alto = 16;
     const el = contenedores.banda;
@@ -229,13 +244,44 @@ export function graficaVuelo(contenedores, vuelo, otros = [], opciones = {}) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', `0 0 ${ancho} ${alto}`);
     svg.style.width = '100%'; svg.style.height = '14px'; svg.style.display = 'block';
-    const t0 = vuelo.puntos[0].t, t1 = vuelo.puntos[vuelo.puntos.length - 1].t;
+
+    const pts = vuelo.puntos;
+    const t0 = pts[0].t, t1 = pts[pts.length - 1].t;
+    const dur = Math.max(1, t1 - t0);
+
+    const colorDe = (v) => v == null ? '#d8d4cc' : (v > 0.3 ? '#ff8a3d' : (v < -0.3 ? '#4d7fd1' : '#d8d4cc'));
+
+    /* se agrupan los tramos: un rect va desde que cambia el color hasta que
+       vuelve a cambiar, con un minimo de 1 segundo para no trocear por ruido */
+    const trozos = [];
+    let act = null;
+    for (const p of pts) {
+      const c = colorDe(p.vs);
+      if (!act || act.c !== c) {
+        if (act && (act.t1 - act.t0) >= 1) trozos.push(act);
+        else if (act) { /* demasiado corto: se alarga el anterior */
+          if (trozos.length) trozos[trozos.length - 1].t1 = p.t;
+        }
+        act = { c, t0: p.t, t1: p.t };
+      } else {
+        act.t1 = p.t;
+      }
+    }
+    if (act) trozos.push(act);
+
+    /* y si aun asi hay demasiados, se funden los mas cortos */
+    const maxTrozos = 300;
+    let lista = trozos;
+    if (lista.length > maxTrozos) {
+      const salto = Math.ceil(lista.length / maxTrozos);
+      lista = lista.filter((_, i) => i % salto === 0);
+    }
+
     let h = '';
-    for (const p of vuelo.puntos) {
-      const x = (p.t - t0) / (t1 - t0) * ancho;
-      const w = Math.max(1, ancho / vuelo.puntos.length);
-      const c = p.vs == null ? '#d8d4cc' : (p.vs > 0.3 ? '#ff8a3d' : (p.vs < -0.3 ? '#4d7fd1' : '#d8d4cc'));
-      h += `<rect x="${x.toFixed(1)}" y="0" width="${w.toFixed(1)}" height="${alto}" fill="${c}"/>`;
+    for (const t of lista) {
+      const x = (t.t0 - t0) / dur * ancho;
+      const w = Math.max(0.8, (t.t1 - t.t0) / dur * ancho);
+      h += `<rect x="${x.toFixed(1)}" y="0" width="${w.toFixed(1)}" height="${alto}" fill="${t.c}"/>`;
     }
     svg.innerHTML = h;
     el.appendChild(svg);

@@ -177,6 +177,50 @@ tr.clic:hover td{ background:#f7f9fc }
 .punto{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:5px; vertical-align:middle }
 .punto.si{ background:var(--ok) } .punto.no{ background:#c9c4ba }
 
+/* ---------- el selector de tasks ---------- */
+#tasks{ display:flex; gap:6px; overflow-x:auto; padding:2px 0 4px; -webkit-overflow-scrolling:touch }
+#tasks::-webkit-scrollbar{ display:none }
+#tasks button{
+  flex:none; background:rgba(255,255,255,.13); border:0; color:#fff; font:inherit;
+  font-size:12.5px; padding:6px 11px; border-radius:8px; cursor:pointer; white-space:nowrap;
+}
+#tasks button.on{ background:#fff; color:var(--blue); font-weight:650 }
+#tasks button:disabled{ opacity:.4 }
+
+/* ---------- el selector de pilotos ---------- */
+#pilotos{ display:flex; gap:6px; flex-wrap:wrap }
+#pilotos button{
+  background:#f1efe9; border:1px solid transparent; color:var(--ink); font:inherit;
+  font-size:12.5px; padding:7px 11px; border-radius:9px; cursor:pointer; text-align:left;
+  line-height:1.3;
+}
+#pilotos button .km{ display:block; font-size:10.5px; color:var(--sub); font-weight:400 }
+#pilotos button.on{ background:var(--blue); color:#fff }
+#pilotos button.on .km{ color:rgba(255,255,255,.75) }
+#pilotos button.pam{ border-color:var(--sube) }
+#pilotos button.pam.on{ border-color:var(--sube) }
+
+/* ---------- las observaciones (el canal) ---------- */
+#obs{ margin-top:2px }
+#obs .cerrado{
+  border:1px dashed #c9c4ba; border-radius:12px; background:#fbfaf8;
+  padding:22px 16px; text-align:center;
+}
+#obs .cerrado .candado{ font-size:26px; margin-bottom:6px; opacity:.5 }
+#obs .cerrado p{ margin:0 0 4px; font-size:13.5px }
+#obs .cerrado .mini{ margin:0 0 14px }
+.nota{ display:flex; gap:10px; padding:9px 2px; border-bottom:1px solid #f0ede7; font-size:13.5px }
+.nota:last-child{ border:0 }
+.nota .h{ color:var(--sub); font-size:11.5px; font-variant-numeric:tabular-nums;
+  flex:none; width:42px; padding-top:2px }
+.nota .x{ flex:1; white-space:pre-wrap; word-break:break-word }
+.escribir{ display:flex; gap:8px; align-items:flex-end; margin-top:12px }
+.escribir textarea{ flex:1; min-height:42px; max-height:110px; font:inherit; font-size:14px;
+  padding:9px 11px; border:1px solid var(--line); border-radius:10px; resize:none; background:#fbfaf8 }
+#cEstado{ font-size:11.5px; color:var(--sub); min-height:15px; margin-top:7px }
+.punto{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:5px; vertical-align:middle }
+.punto.si{ background:var(--ok) } .punto.no{ background:#c9c4ba }
+
 /* ---------- el detalle del cursor ---------- */
 #lectura{ font-size:12.5px; color:var(--sub); min-height:18px; font-variant-numeric:tabular-nums }
 #lectura b{ color:var(--ink) }
@@ -186,36 +230,24 @@ tr.clic:hover td{ background:#f7f9fc }
 
 <header>
   <div class="in">
-    <h1>ThermalApp<small id="subtitulo">Sube tus archivos IGC</small></h1>
-    <button id="bNotas" style="display:none">Notas</button>
+    <h1>ThermalApp<small id="subtitulo">Análisis de vuelo</small></h1>
     <button id="bMensaje" style="display:none">Etiqueta</button>
-    <button id="bCargar" style="display:none">Añadir IGC</button>
-    <button id="bVaciar" style="display:none">Vaciar</button>
   </div>
+  <div class="in"><div id="tasks"></div></div>
 </header>
 
 <main class="wrap">
 
   <!-- ============ PANTALLA 1: CARGAR ============ -->
-  <section class="pant on" id="pCarga">
-    <div id="carga">
-      <div class="caja" id="caja">
-        <h2>Tira aquí tus archivos IGC</h2>
-        <p>Uno o varios. Se quedan en tu teléfono: no se sube nada a ningún sitio.</p>
-        <button class="btn" id="bElegir">Elegir archivos</button>
-        <div class="mt2"><button class="btn gh" id="bNotas2">Notas del vuelo</button></div>
-        <input type="file" id="input" accept=".igc,.IGC,.txt" multiple hidden>
-      </div>
-      <div class="pie">
-        El IGC es el archivo que guarda tu vario.<br>
-        De ahí se sacan el viento, las térmicas, los planeos y la eficiencia.<br>
-        <b>El viento se calcula a partir de las vueltas que diste</b> — no se pide ni se estima a ojo.
-      </div>
-    </div>
-  </section>
+  <!-- la pantalla de carga ya no existe: la app arranca en el analisis -->
 
   <!-- ============ PANTALLA 2: ANÁLISIS ============ -->
   <section class="pant" id="pAnalisis">
+
+    <div class="card">
+      <h3>Pilotos del task</h3>
+      <div id="pilotos"></div>
+    </div>
 
     <div class="card" style="padding:0;border:0;background:transparent">
       <div id="mapa"></div>
@@ -258,6 +290,11 @@ tr.clic:hover td{ background:#f7f9fc }
     </div>
 
     <div class="card">
+      <h3>Observaciones <span class="mini">sobre este task</span></h3>
+      <div id="obs"></div>
+    </div>
+
+    <div class="card">
       <h3>Comparación <span class="mini">altitud desde el despegue de cada uno</span></h3>
       <div id="gComp"></div>
     </div>
@@ -265,28 +302,7 @@ tr.clic:hover td{ background:#f7f9fc }
   </section>
 
   <!-- ============ PANTALLA 3: NOTAS DEL VUELO ============ -->
-  <section class="pant" id="pNotas">
-    <div class="card">
-      <h2 style="margin:0 0 2px;font-size:17px">Notas del vuelo</h2>
-      <p class="mini" style="margin:0 0 4px">Anotaciones compartidas con tu compañero de equipo.
-      Cada uno lleva las suyas en su teléfono.</p>
-      <div id="cEstado"></div>
-    </div>
-
-    <div class="card">
-      <div id="cNotas"><p class="mini">Todavía no hay notas.</p></div>
-      <div class="escribir">
-        <textarea id="cTexto" placeholder="Añadir una nota…" rows="1"></textarea>
-        <button class="btn" id="cEnviar">Añadir</button>
-      </div>
-      <p class="mini mt">Para ver las notas de tu compañero, los dos tenéis que usar
-      <b>la misma contraseña de equipo</b>. Se acuerda en persona.</p>
-      <div class="row mt">
-        <button class="btn gh" id="cSalir">Volver al análisis</button>
-        <button class="btn gh" id="cCambiar">Cambiar de equipo</button>
-      </div>
-    </div>
-  </section>
+  <!-- las notas ahora son las Observaciones del task -->
 
   <!-- ============ PANTALLA 4: MENSAJE ESCONDIDO ============ -->
   <section class="pant" id="pSecreto">
@@ -337,584 +353,6 @@ tr.clic:hover td{ background:#f7f9fc }
 
 <div id="aviso"></div>
 
-<script type="module">
-import { parseIGC } from './igc.js';
-import { analiza, fmt, distancia } from './vuelo.js';
-import * as Mapa from './mapa.js';
-import * as Graf from './grafico.js';
-import { esconde, lee, llevaAlgo } from './secreto.js';
-import * as Canal from './canal.js';
-
-/* ============================================================
-   El estado
-   ============================================================ */
-const COLORES = ['#2e4a6f', '#ff8a3d', '#2f7a4d', '#a8742c', '#7a4d9e', '#b3453a', '#4d7fd1'];
-let vuelos = [];      /* [{ nombre, puntos, tramos, termicas, viento, resumen, color }] */
-let cual = 0;         /* el que se está mirando */
-let listo = false;    /* el mapa ya está montado */
-
-/* ============================================================
-   Un aviso, sin gritar
-   ============================================================ */
-let tAviso = null;
-function aviso(txt, ms = 3600) {
-  const a = document.getElementById('aviso');
-  a.textContent = txt;
-  a.classList.add('on');
-  clearTimeout(tAviso);
-  tAviso = setTimeout(() => {
-    a.classList.remove('on');
-    setTimeout(() => { a.textContent = ''; }, 250);
-  }, ms);
-}
-
-/* ============================================================
-   Leer los archivos
-   ============================================================
-   Se lee el texto y se analiza. Si un archivo no se entiende, se DICE, y no se
-   inventa un vuelo: un IGC que no se lee es un IGC que no se lee.
-*/
-async function cargaArchivos(archivos) {
-  if (!archivos || !archivos.length) return;
-
-  let bien = 0;
-  const fallos = [];
-
-  for (const f of archivos) {
-    let texto = '';
-    try { texto = await f.text(); }
-    catch (e) { fallos.push(f.name + ': no se pudo leer'); continue; }
-
-    const r = analiza(texto, parseIGC);
-    if (!r.ok) { fallos.push(f.name + ': ' + r.motivo); continue; }
-
-    /* el nombre: el del piloto si viene en la cabecera, y si no el del archivo */
-    let nombre = (r.nombre || '').trim();
-    if (!nombre) nombre = f.name.replace(/\.igc$/i, '').replace(/[_-]+/g, ' ').slice(0, 26);
-
-    vuelos.push({
-      ...r,
-      nombre,
-      archivo: f.name,
-      /* se guarda el File tal cual: al esconder un mensaje hay que escribir el
-         archivo ORIGINAL, no rehacerlo desde los puntos */
-      archivoOriginal: f,
-      color: COLORES[vuelos.length % COLORES.length],
-    });
-    bien++;
-  }
-
-  if (!bien) {
-    aviso(fallos.length ? fallos[0] : 'No se pudo leer ningún archivo.', 5000);
-    if (fallos.length > 1) console.warn('archivos con problema:', fallos);
-    return;
-  }
-
-  if (fallos.length) aviso(bien + ' vuelo(s) leídos · ' + fallos.length + ' con problema', 5000);
-  else aviso(bien === 1 ? 'Vuelo leído' : bien + ' vuelos leídos');
-
-  /* el primero que se mire: el que más voló */
-  cual = vuelos.reduce((mejor, v, i) => {
-    const d = (v.resumen && v.resumen.recorrido) || 0;
-    const dm = (vuelos[mejor].resumen && vuelos[mejor].resumen.recorrido) || 0;
-    return d > dm ? i : mejor;
-  }, 0);
-
-  abreAnalisis();
-}
-
-/* ============================================================
-   Cambiar de pantalla
-   ============================================================ */
-function abreAnalisis() {
-  document.getElementById('pCarga').classList.remove('on');
-  document.getElementById('pAnalisis').classList.add('on');
-  document.getElementById('bCargar').style.display = '';
-  document.getElementById('bVaciar').style.display = '';
-  document.getElementById('bNotas').style.display = '';
-  document.getElementById('bMensaje').style.display = '';
-
-  /* el mapa se monta la primera vez, y sólo entonces: Leaflet no funciona si el
-     contenedor está oculto (mide cero) */
-  if (!listo) {
-    Mapa.arrancaMapa('mapa');
-    listo = true;
-  }
-  pinta();
-}
-
-function pinta() {
-  const v = vuelos[cual];
-  if (!v) return;
-
-  document.getElementById('subtitulo').textContent =
-    vuelos.length === 1 ? v.nombre : (vuelos.length + ' vuelos · viendo ' + v.nombre);
-
-  pintaMets(v);
-  pintaTabla();
-  pintaTermicas(v);
-  pintaGraficos(v);
-
-  Mapa.limpia();
-  /* los demás, en gris fino detrás */
-  vuelos.forEach((o, i) => {
-    if (i !== cual) Mapa.pintaVuelo(o, { resalte: false });
-  });
-  Mapa.pintaVuelo(v, { resalte: true });
-  Mapa.pintaTermicas(v);
-  Mapa.encuadra([v]);
-}
-
-/* ============================================================
-   Los números grandes
-   ============================================================ */
-function pintaMets(v) {
-  const r = v.resumen;
-  document.getElementById('quienEs').textContent = v.nombre;
-
-  if (!r) {
-    document.getElementById('mets').innerHTML =
-      '<div><div class="et">Sin datos</div><div class="va">—</div></div>';
-    return;
-  }
-
-  const ms = (val, dec = 0) => val == null ? '—' : Math.round(val).toLocaleString('es-MX');
-  const celda = (et, va, clase = '') =>
-    `<div><div class="et">${et}</div><div class="va ${clase}">${va}</div></div>`;
-
-  let h = '';
-  h += celda('Distancia', ms(r.recorrido / 1000) + ' <span style="font-size:12px">km</span>');
-  h += celda('Tiempo', fmt.hms(r.segundos));
-  h += celda('Alt. máxima', ms(r.altMax) + ' <span style="font-size:12px">m</span>');
-  h += celda('+Altura ganada', ms(r.ganado) + ' <span style="font-size:12px">m</span>', 'sube');
-  h += celda('Vario medio vuelo', r.vsMedio == null ? '—' : fmt.ms(r.vsMedio), r.vsMedio > 0 ? 'sube' : 'baja');
-  h += celda('Mejor subida', r.mejorSubida ? fmt.ms(r.mejorSubida.vs) : '—', 'sube');
-  h += celda('Mejor planeo', r.mejorPlaneo ? fmt.gr(r.mejorPlaneo.gr) + ' : 1' : '—');
-  h += celda('Planeo medio', r.grMedio ? fmt.gr(r.grMedio) + ' : 1' : '—');
-  h += celda('Vel. media', fmt.kmh(r.hsMedia));
-  h += celda('% subiendo', fmt.pct(r.eficiencia));
-  h += celda('Térmicas', r.nTermicas);
-  h += celda('Viento', v.viento
-    ? Math.round(v.viento.vel) + ' <span style="font-size:12px">km/h ' + fmt.grados(v.viento.dir) + '</span>'
-    : '—');
-
-  document.getElementById('mets').innerHTML = h;
-
-  document.getElementById('altEscala').textContent =
-    r.altMin != null ? fmt.m(r.altMin) + ' a ' + fmt.m(r.altMax) : '';
-}
-
-/* ============================================================
-   La tabla de los vuelos
-   ============================================================ */
-function pintaTabla() {
-  const tb = document.getElementById('tabla');
-
-  /* para comparar de verdad se ordena por distancia recorrida, que es lo que
-     mide quien voló más lejos */
-  const orden = vuelos.map((v, i) => ({ v, i }))
-    .sort((a, b) => ((b.v.resumen && b.v.resumen.recorrido) || 0) - ((a.v.resumen && a.v.resumen.recorrido) || 0));
-
-  tb.innerHTML = orden.map(({ v, i }) => {
-    const r = v.resumen || {};
-    const cel = (x, dec = 0) => x == null ? '—' : Number(x).toLocaleString('es-MX', { maximumFractionDigits: dec });
-    return `<tr class="clic ${i === cual ? 'sel' : ''}" data-i="${i}">
-      <td><span class="chip" style="background:${v.color}"></span>${escapa(v.nombre)}</td>
-      <td>${r.recorrido ? cel(r.recorrido / 1000, 1) + ' km' : '—'}</td>
-      <td>${r.segundos ? fmt.hms(r.segundos) : '—'}</td>
-      <td class="pos">${r.ganado ? '+' + cel(r.ganado) + ' m' : '—'}</td>
-      <td>${r.mejorSubida ? fmt.ms(r.mejorSubida.vs) : '—'}</td>
-      <td>${r.grMedio ? fmt.gr(r.grMedio) + ' : 1' : '—'}</td>
-      <td>${v.viento ? Math.round(v.viento.vel) + ' km/h ' + fmt.grados(v.viento.dir) : '—'}</td>
-    </tr>`;
-  }).join('');
-
-  tb.querySelectorAll('tr').forEach(tr => {
-    tr.onclick = () => { cual = +tr.dataset.i; pinta(); };
-  });
-}
-
-/* ============================================================
-   Las térmicas
-   ============================================================ */
-function pintaTermicas(v) {
-  const cont = document.getElementById('termicas');
-  const t = (v.termicas || []).filter(x => x.esTermica);
-  document.getElementById('nTerm').textContent = t.length
-    ? t.length + ' encontradas' : 'ninguna';
-
-  if (!t.length) {
-    cont.innerHTML = '<p class="mini">No se encontraron vueltas suficientes. ' +
-      'Puede ser un vuelo de ladera o de planeo largo, sin térmicas.</p>';
-    return;
-  }
-
-  /* la mejor térmica, para marcarla */
-  const mejor = t.reduce((m, x) => ((x.vs || 0) > (m.vs || 0) ? x : m), t[0]);
-
-  cont.innerHTML = t.map(x => {
-    const esMejor = x === mejor;
-    const hora = v.puntos[x.tramos[0].desde] ? horaDe(v.puntos[x.tramos[0].desde].t) : '';
-    return `<div class="term">
-      <div class="n" ${esMejor ? 'style="background:#e8f3ec;color:#2f7a4d"' : ''}>${x.n}</div>
-      <div class="q">
-        <b>${hora}</b> · ${fmt.hms(x.segundos)} · ${x.vueltas.toFixed(1)} vueltas
-      </div>
-      <div class="qq" style="text-align:right">
-        <span class="${x.vs > 0 ? 'pos' : ''}">${x.vs == null ? '—' : fmt.ms(x.vs)}</span><br>
-        <span class="mini">+${Math.round(x.ganancia || 0)} m</span>
-      </div>
-    </div>`;
-  }).join('') + (mejor.vs ? `<p class="mini mt">La mejor fue la ${mejor.n}, con ${fmt.ms(mejor.vs)} y +${Math.round(mejor.ganancia)} m.</p>` : '');
-}
-
-/* ============================================================
-   Los gráficos
-   ============================================================ */
-function pintaGraficos(v) {
-  const otros = vuelos.filter((_, i) => i !== cual);
-
-  Graf.graficaVuelo({
-    alt: document.getElementById('gAlt'),
-    vario: document.getElementById('gVario'),
-    vel: document.getElementById('gVel'),
-    banda: document.getElementById('gBanda'),
-  }, v, otros, {
-    alMover: (t) => muestraLectura(v, t),
-  });
-
-  Graf.graficaComparacion(document.getElementById('gComp'), vuelos,
-    { colores: vuelos.map(x => x.color) });
-
-  document.getElementById('lectura').innerHTML = 'Mueve el dedo por los gráficos para ver el momento.';
-}
-
-/* ---------- lo que dice el cursor al pasar ---------- */
-function muestraLectura(v, t) {
-  /* el punto más cercano a ese instante */
-  const p = v.puntos;
-  let lo = 0, hi = p.length - 1;
-  while (hi - lo > 1) {
-    const m = (lo + hi) >> 1;
-    if (p[m].t < t) lo = m; else hi = m;
-  }
-  const q = Math.abs(p[lo].t - t) < Math.abs(p[hi].t - t) ? p[lo] : p[hi];
-
-  const partes = ['<b>' + horaDe(q.t) + '</b>'];
-  if (q.altReal != null) partes.push(Math.round(q.altReal) + ' m');
-  if (q.vs != null) partes.push(fmt.ms(q.vs));
-  if (q.hs != null && q.hs < 120) partes.push(fmt.kmh(q.hs));
-  if (q.rumbo != null) partes.push(fmt.grados(q.rumbo));
-  document.getElementById('lectura').innerHTML = partes.join(' · ');
-}
-
-function horaDe(t) {
-  const h = Math.floor(t / 3600) % 24, m = Math.floor((t % 3600) / 60);
-  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
-}
-
-function escapa(s) {
-  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-/* ============================================================
-   EL MENSAJE ESCONDIDO
-   ============================================================
-   Dos cosas: esconder un mensaje en un vuelo, y leer uno que te llego.
-
-   El mensaje va cifrado con AES y metido en los comentarios del IGC, que es
-   donde los varios escriben sus cosas y ningun programa mira. El vuelo queda
-   intacto: se abre igual y el analisis sale igual.
-   ============================================================ */
-
-/* ---------- ir y volver de la pantalla ---------- */
-/* el boton "Mensaje" de dentro sigue existiendo para esconder un mensaje en un
-   IGC, pero el nombre visible ahora es otro: es una herramienta de la app. */
-document.getElementById('bMensaje').onclick = () => {
-  document.querySelectorAll('.pant').forEach(x => x.classList.remove('on'));
-  document.getElementById('pSecreto').classList.add('on');
-  /* el desplegable de vuelos, con los que hay cargados */
-  const sel = document.getElementById('msgVuelo');
-  sel.innerHTML = vuelos.map((v, i) =>
-    `<option value="${i}">${escapa(v.nombre)} · ${v.resumen ? (v.resumen.recorrido / 1000).toFixed(1) : '?'} km</option>`
-  ).join('') || '<option value="">(no hay vuelos cargados)</option>';
-  window.scrollTo(0, 0);
-};
-
-document.getElementById('msgVolver').onclick = () => {
-  document.getElementById('pSecreto').classList.remove('on');
-  document.getElementById(pAnalisis.classList.contains('on') ? 'pAnalisis' : 'pCarga');
-  document.getElementById('pAnalisis').classList.add('on');
-  window.scrollTo(0, 0);
-};
-
-/* ---------- ESCRIBIR ---------- */
-document.getElementById('msgHacer').onclick = async () => {
-  const i = +document.getElementById('msgVuelo').value;
-  const texto = document.getElementById('msgTexto').value;
-  const clave = document.getElementById('msgClave').value;
-  const res = document.getElementById('msgRes');
-
-  const v = vuelos[i];
-  if (!v) { res.innerHTML = '<div class="no">Primero carga un vuelo.</div>'; return; }
-  if (!texto.trim()) { res.innerHTML = '<div class="no">Escribe el mensaje.</div>'; return; }
-  if (clave.length < 6) {
-    res.innerHTML = '<div class="no">La contraseña, de al menos 6 caracteres. ' +
-      'Es lo único que protege el mensaje: cuanto más larga, mejor.</div>';
-    return;
-  }
-
-  res.innerHTML = '<div class="mini">Cifrando…</div>';
-
-  /* el archivo original: se vuelve a leer del disco, no se reconstruye. Asi el
-     vuelo que viaja es EXACTAMENTE el que subiste. */
-  let original;
-  try {
-    const f = v.archivoOriginal;
-    original = f ? await f.text() : null;
-  } catch (e) { original = null; }
-  if (!original) {
-    res.innerHTML = '<div class="no">No se encuentra el archivo original. Vuélvelo a subir.</div>';
-    return;
-  }
-
-  const r = await esconde(original, texto, clave);
-  if (!r.ok) { res.innerHTML = '<div class="no">' + escapa(r.motivo) + '</div>'; return; }
-
-  /* se descarga */
-  const nombre = (v.archivo || 'vuelo.igc').replace(/\.igc$/i, '') + '-igc.igc';
-  const blob = new Blob([r.texto], { type: 'application/octet-stream' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = nombre;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-
-  res.innerHTML = `<div class="ok"><b>Listo.</b> Se ha descargado <b>${escapa(nombre)}</b>.<br>
-    Lleva el mensaje en ${r.trozos} comentario(s). Ábrelo en el análisis y verás el mismo vuelo,
-    con los mismos datos: el mensaje no toca ni un punto del track.<br><br>
-    Mándalo como mandarías cualquier vuelo. Quien no tenga la contraseña verá un archivo de vuelo.</div>`;
-};
-
-/* ---------- LEER ---------- */
-let archivoParaLeer = null;
-document.getElementById('msgElegir').onclick = () => document.getElementById('msgArchivo').click();
-document.getElementById('msgArchivo').onchange = async () => {
-  const f = document.getElementById('msgArchivo').files[0];
-  if (!f) return;
-  archivoParaLeer = f;
-  document.getElementById('msgNombre').textContent = f.name;
-  document.getElementById('msgArchivo').value = '';
-  /* si lleva algo, se dice sin pedir contrasena: asi se sabe que llegó bien */
-  const t = await f.text();
-  const res = document.getElementById('msgRes2');
-  if (llevaAlgo(t)) res.innerHTML = '<div class="mini">Este archivo lleva un mensaje. Pon la contraseña.</div>';
-  else res.innerHTML = '<div class="mini">Este archivo no parece llevar ningún mensaje.</div>';
-};
-
-document.getElementById('msgLeer').onclick = async () => {
-  const res = document.getElementById('msgRes2');
-  const clave = document.getElementById('msgClaveLee').value;
-  if (!archivoParaLeer) { res.innerHTML = '<div class="no">Elige el archivo.</div>'; return; }
-  if (!clave) { res.innerHTML = '<div class="no">Pon la contraseña.</div>'; return; }
-
-  res.innerHTML = '<div class="mini">Descifrando…</div>';
-  const t = await archivoParaLeer.text();
-  const r = await lee(t, clave);
-
-  if (!r.ok) { res.innerHTML = '<div class="no">' + escapa(r.motivo) + '</div>'; return; }
-  res.innerHTML = '<div class="ok"><b>Mensaje:</b></div>' +
-    '<div class="claro">' + escapa(r.mensaje) + '</div>' +
-    '<div class="mini mt">' + r.trozos + ' trozo(s) · ' + r.bytes + ' bytes cifrados</div>';
-};
-
-/* ============================================================
-   LAS NOTAS DEL VUELO (el canal)
-   ============================================================
-   Dos personas con la misma contrasena de equipo comparten notas. Los mensajes
-   van CIFRADOS: lo que llega al servidor son bytes sin sentido.
-
-   Y todo se ensena como "notas de vuelo" dentro del analisis, con su hora, como
-   las que se apuntan despues de volar. Nada en la pantalla dice "mensaje".
-   ============================================================ */
-
-let canal = null;
-let tLatido = null;
-
-/* ---------- entrar y salir ---------- */
-function abreNotas() {
-  document.querySelectorAll('.pant').forEach(x => x.classList.remove('on'));
-  document.getElementById('pNotas').classList.add('on');
-  window.scrollTo(0, 0);
-  if (!canal) pideEquipo();
-  else {
-    pintaNotas();
-    latido();
-  }
-}
-
-/* ---------- el equipo: la contrasena compartida ----------
-   Se guarda en el telefono para no tener que escribirla cada vez. Pero se puede
-   cambiar. */
-function pideEquipo() {
-  const guardada = (() => { try { return localStorage.getItem('pad-equipo'); } catch (e) { return null; } })();
-  const c = document.getElementById('cNotas');
-  c.innerHTML = `
-    <div style="padding:6px 0">
-      <p class="mini" style="margin:0 0 10px">Escribe la contraseña de equipo. Los dos tenéis que
-      poner <b>la misma</b>, y a partir de ahí os veis las notas.</p>
-      <input type="password" id="eqIn" placeholder="Contraseña de equipo"
-        style="width:100%;font:inherit;font-size:14px;padding:10px 11px;border:1px solid var(--line);border-radius:10px;background:#fbfaf8">
-      <p class="mini mt" style="margin-bottom:0">No se guarda en ningún sitio más que en tu teléfono,
-      y no sale de aquí. <b>Si se pierde, no se puede recuperar lo escrito.</b></p>
-    </div>`;
-  const b = document.createElement('button');
-  b.className = 'btn mt';
-  b.textContent = 'Entrar';
-  b.onclick = async () => {
-    const v = document.getElementById('eqIn').value;
-    const n = Canal.nuevoCanal(v);
-    if (!n.ok) { aviso(n.motivo, 4200); return; }
-    canal = n;
-    const r = await Canal.abre(canal);
-    if (!r.ok) { aviso(r.motivo, 4200); canal = null; return; }
-    try { localStorage.setItem('pad-equipo', v); } catch (e) {}
-    pintaNotas(); latido();
-  };
-  c.appendChild(b);
-  if (guardada) document.getElementById('eqIn').value = guardada;
-  setTimeout(() => { const i = document.getElementById('eqIn'); if (i) i.focus(); }, 250);
-}
-
-function latido() {
-  clearInterval(tLatido);
-  /* cada 12 segundos se mira si hay algo nuevo. Sin gastar: si no hay, no se
-     trae nada. */
-  tLatido = setInterval(async () => {
-    if (!canal || !canal.clave) return;
-    const ultimo = canal.mensajes.length ? canal.mensajes[canal.mensajes.length - 1].id : null;
-    const hay = await Canal.hayNuevo(canal, ultimo);
-    if (hay) { await trae(); pintaNotas(); }
-  }, 12000);
-}
-
-async function trae() {
-  const r = await Canal.recibe(canal);
-  if (!r.ok) return { ok: false, motivo: r.motivo };
-  /* se juntan con los que ya hay, sin repetir */
-  const porId = {};
-  for (const m of canal.mensajes) porId[m.id] = m;
-  for (const m of (r.mensajes || [])) porId[m.id] = m;
-  canal.mensajes = Object.values(porId).sort((a, b) => (a.ts || 0) - (b.ts || 0));
-  return { ok: true, nuevos: r.nuevos };
-}
-
-/* ---------- pintar ---------- */
-function pintaNotas() {
-  const c = document.getElementById('cNotas');
-  const est = document.getElementById('cEstado');
-
-  if (!canal || !canal.clave) { pideEquipo(); return; }
-
-  const conTexto = canal.mensajes.filter(m => !m.ilegible);
-  if (!conTexto.length) {
-    c.innerHTML = '<p class="mini">Todavía no hay notas. Escribe la primera.</p>';
-  } else {
-    let ultimaFecha = '';
-    c.innerHTML = conTexto.map(m => {
-      const f = Canal.fecha(m.ts);
-      let sep = '';
-      if (f !== ultimaFecha) { ultimaFecha = f; }
-      return `<div class="nota ${m.mio ? 'mia' : 'suya'}">
-        <div class="h">${sep}${Canal.hora(m.ts)}</div>
-        <div class="x">${escapa(m.texto)}</div>
-      </div>`;
-    }).join('');
-  }
-
-  const malos = canal.mensajes.filter(m => m.ilegible).length;
-  est.innerHTML =
-    `<span class="punto si"></span>Equipo conectado · ${conTexto.length} nota${conTexto.length === 1 ? '' : 's'}` +
-    (malos ? ` · <span style="color:var(--mal)">${malos} que no se pudo abrir</span>` : '');
-}
-
-/* ---------- enviar ---------- */
-document.getElementById('cEnviar').onclick = async () => {
-  if (!canal || !canal.clave) { aviso('Primero entra con la contraseña de equipo.', 4000); return; }
-  const ta = document.getElementById('cTexto');
-  const t = ta.value;
-  if (!t.trim()) return;
-  const r = await Canal.envia(canal, t);
-  if (!r.ok) { aviso(r.motivo, 4200); return; }
-  ta.value = '';
-  await trae();
-  pintaNotas();
-};
-
-/* con Enter se envia, y con Shift+Enter se hace salto de linea */
-document.getElementById('cTexto').addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('cEnviar').click(); }
-});
-
-/* ---------- los botones ---------- */
-document.getElementById('cSalir').onclick = () => {
-  clearInterval(tLatido);
-  document.getElementById('pNotas').classList.remove('on');
-  document.getElementById('pAnalisis').classList.add('on');
-  window.scrollTo(0, 0);
-};
-
-document.getElementById('cCambiar').onclick = () => {
-  try { localStorage.removeItem('pad-equipo'); } catch (e) {}
-  canal = null;
-  clearInterval(tLatido);
-  pideEquipo();
-};
-
-document.getElementById('bNotas').onclick = abreNotas;
-document.getElementById('bNotas2').onclick = abreNotas;
-
-/* ============================================================
-   Los botones y la carga
-   ============================================================ */
-const input = document.getElementById('input');
-const caja = document.getElementById('caja');
-
-document.getElementById('bElegir').onclick = () => input.click();
-document.getElementById('bCargar').onclick = () => input.click();
-input.onchange = async () => {
-  /* ===== HAY QUE COPIAR LA LISTA ANTES DE VACIAR EL CAMPO =====
-     Con  input.value = ''  se borra la lista de archivos AL INSTANTE, y si se
-     hace mientras se estan leyendo, los que quedan por leer desaparecen. Con
-     tres archivos solo se cargaba uno. Por eso primero se copia la lista a un
-     array (que ya es tuyo y no lo toca nadie) y despues se vacia. */
-  const archivos = [...input.files];
-  input.value = '';
-  await cargaArchivos(archivos);
-};
-
-document.getElementById('bVaciar').onclick = () => {
-  vuelos = []; cual = 0; listo = false;
-  document.getElementById('pAnalisis').classList.remove('on');
-  document.getElementById('pCarga').classList.add('on');
-  document.getElementById('bCargar').style.display = 'none';
-  document.getElementById('bVaciar').style.display = 'none';
-  document.getElementById('subtitulo').textContent = 'Sube tus archivos IGC';
-};
-
-/* arrastrar y soltar */
-['dragenter', 'dragover'].forEach(ev =>
-  document.addEventListener(ev, e => {
-    if (!e.target.closest || !document.getElementById('pCarga').classList.contains('on')) return;
-    e.preventDefault(); caja.classList.add('encima');
-  }));
-['dragleave', 'drop'].forEach(ev =>
-  document.addEventListener(ev, e => {
-    e.preventDefault(); caja.classList.remove('encima');
-  }));
-document.addEventListener('drop', e => {
-  if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) cargaArchivos([...e.dataTransfer.files]);
-});
-</script>
+<script type="module" src="app.js"></script>
 </body>
 </html>

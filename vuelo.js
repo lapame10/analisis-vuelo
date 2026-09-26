@@ -213,8 +213,24 @@ export function segmentos(puntos, opciones = {}) {
 
     const mediaVs = (gan != null && seg) ? gan / seg : null;
     const mediaHs = seg ? (recorrido / seg) * 3.6 : null;
-    /* la relacion de planeo: cuantos metros avanza por cada metro que baja */
-    const gr = (gan != null && gan < -1) ? Math.abs(recto / gan) : null;
+
+    /* ===== LA RELACION DE PLANEO, CON TOPE =====
+       La relacion de planeo es cuantos metros avanza por cada metro que baja.
+       Sale de dividir, asi que cuando la caida es pequeña el numero se dispara:
+       un parapente NUNCA planea 200 a 1. Eso no es un planeo, es una meseta —
+       un tramo donde el aire estaba tranquilo y el ala apenas perdio altura.
+
+       Con el tope, esos tramos se descartan en vez de dar un dato absurdo. Un
+       200:1 en pantalla hace que no te creas NINGUN otro numero de la app, y con
+       razon. Se prefiere no enseñarlo.
+
+       Y se exige una caida minima Y un recorrido minimo, para que el cociente
+       tenga sentido. */
+    let gr = null;
+    if (gan != null && gan < -20 && recto > 300) {
+      const g = Math.abs(recto / gan);
+      gr = g <= 15 ? g : null;      /* mas de 15:1 no es un planeo de parapente */
+    }
 
     salida.push({
       tipo: tr.tipo,
@@ -331,11 +347,20 @@ export function vientoDeTermicas(puntos, tramos, opciones = {}) {
      89 grados donde habia 0, 135 y 270. */
   const dir = (Math.atan2(sx, sy) / RAD + 360) % 360;
 
+  /* ===== UN VIENTO DE 1 km/h NO ES VIENTO =====
+     Cuando el detector saca un viento casi cero, lo mas probable no es que no
+     hubiera viento: es que las vueltas no cerraron bien y el giro no se cancelo
+     del todo. Se devuelve igual (el dato esta ahi) pero marcado, para que la
+     interfaz pueda decir "sin viento claro" en vez de enseñar "1 km/h", que
+     parece un dato y no lo es. */
+  const pocoFiable = vel < 4;
+
   return {
     vel,                      /* km/h */
     dir,                      /* grados DESDE donde sopla */
     medidas,
     cuantas: medidas.length,
+    pocoFiable,
     /* cuanto bailan las medidas entre si: si es mucho, el viento no era constante */
     dispersion: (() => {
       if (medidas.length < 2) return 0;
@@ -443,7 +468,10 @@ export function resumen(puntos, tramos, viento) {
 
   /* ---- la mejor subida y el mejor planeo ---- */
   const subidas = tramos.filter(x => x.tipo === 'subida' && x.segundos >= 30 && x.vs != null);
-  const planeos = tramos.filter(x => x.tipo === 'planeo' && x.segundos >= 30 && x.gr != null);
+  /* para el "mejor planeo" se piden ademas 60 segundos: un planeo de verdad dura
+     minutos, no medio. Con 30 s entran los tramos de transicion y salen numeros
+     que no representan como planea el ala. */
+  const planeos = tramos.filter(x => x.tipo === 'planeo' && x.segundos >= 60 && x.gr != null);
 
   const mejorSubida = subidas.length
     ? subidas.reduce((m, x) => (x.vs > m.vs ? x : m), subidas[0]) : null;

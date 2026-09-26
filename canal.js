@@ -100,13 +100,20 @@ async function claveMaestra(contrasena) {
    Se deriva aparte de la clave (con deriveBits, no deriveKey) para no mezclar
    usos. Es solo un nombre: sirve para que las dos personas coincidan.
 */
-async function nombreDeCanal(contrasena) {
+async function nombreDeCanal(contrasena, cuarto) {
   const base = await crypto.subtle.importKey(
     'raw', enc.encode(contrasena), 'PBKDF2', false, ['deriveBits']);
+  /* ===== CADA TASK TIENE SU PROPIO CUARTO =====
+     El "cuarto" entra en la derivacion, asi que la contraseña de equipo abre la
+     misma conversacion en cada task, pero cada task tiene las suyas. Es como
+     tener cinco cuadernos con la misma llave.
+
+     Y sigue sin haber nombres: dos personas con la misma contraseña caen en el
+     mismo cuarto del mismo task, solas. */
   const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt: enc.encode(SAL + '/canal'), iterations: 100000, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt: enc.encode(SAL + '/canal/' + (cuarto || 'x')),
+      iterations: 100000, hash: 'SHA-256' },
     base, 128);
-  /* en hexadecimal: se puede usar en una direccion web sin escapes */
   return aHex(bits).slice(0, 24);
 }
 
@@ -128,14 +135,16 @@ async function descifra(clave, iv, datos) {
 /* ============================================================
    EL CANAL
    ============================================================ */
-export function nuevoCanal(contrasena) {
+export function nuevoCanal(contrasena, cuarto) {
   if (!contrasena || contrasena.length < 6) {
     return { ok: false, motivo: 'La contraseña, de al menos 6 caracteres.' };
   }
   return {
     ok: true,
     contrasena,
-    /* se rellenan al abrir */
+    /* el "cuarto": cada task tiene el suyo. Dos personas con la misma contraseña
+       ven la misma conversacion en el mismo task. */
+    cuarto: String(cuarto == null ? 'x' : cuarto),
     clave: null, nombre: null, quien: null,
     mensajes: [],
     ultimo: 0,
@@ -153,7 +162,7 @@ export async function abre(canal) {
   if (!canal || !canal.contrasena) return { ok: false, motivo: 'Sin contraseña.' };
   try {
     canal.clave = await claveMaestra(canal.contrasena);
-    canal.nombre = await nombreDeCanal(canal.contrasena);
+    canal.nombre = await nombreDeCanal(canal.contrasena, canal.cuarto);
   } catch (e) {
     return { ok: false, motivo: 'No se pudo preparar el canal: ' + e.message };
   }

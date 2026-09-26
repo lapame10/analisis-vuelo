@@ -5,39 +5,51 @@
    clave y un dia dejan de funcionar sin avisar.
 
    El track se pinta coloreado por lo que estas haciendo:
-     naranja  subiendo   (el vario positivo)
-     azul     planeando  (bajando)
-     gris     sin datos
-   Y mas grueso o mas fino segun la velocidad de suelo. Asi, de un vistazo, se ve
-   donde estaba la termica y donde el planeo.
+     naranja  subiendo
+     azul     planeando
+     gris     en llano o sin datos
+   Asi, de un vistazo, se ve donde estaba la termica y donde el planeo.
 
-   Las termicas van con un circulo del tamaño de la vuelta que diste. Eso es lo
-   que hace que el mapa se lea: no hace falta mirar numeros para saber donde
-   estaba el aire bueno.
+   ============================================================
+   POR QUE EL COLOR VA POR TRAMOS Y NO POR PUNTO
+   ============================================================
+   La primera version coloreaba punto a punto, mirando el vario de cada uno. Y
+   funcionaba... pero el vario cambia de signo constantemente —cada vez que el
+   ala pasa de subir a bajar y vuelve— asi que un vuelo de 5.600 puntos generaba
+   486 trozos de color distintos.
+
+   Y como el mapa pinta TODOS los vuelos (el que miras en color y los otros
+   cinco en gris detras), eran 2.916 polilineas. El navegador se atragantaba y el
+   mapa tardaba una eternidad. Pam lo vio: "no se ejecuta tan bien".
+
+   El arreglo: el color se decide por TRAMOS, que ya estan calculados para el
+   analisis (subidas y planeos, 90 por vuelo en vez de 486 colores). Y de cada
+   tramo se cogen algunos puntos, no todos, porque para dibujar una linea de 8
+   kilometros no hacen falta 400 puntos: con 40 se ve igual.
+
+   Resultado: unas 90 polilineas del vuelo que miras, y una sola por cada vuelo de
+   fondo. Treinta veces menos objetos.
    ============================================================ */
 
 const COLOR = {
-  sube: '#ff8a3d',      /* subiendo */
-  plan: '#4d7fd1',      /* planeando */
-  neutro: '#8d8d8d',    /* sin datos o en llano */
-  activo: '#ffd166',
+  sube: '#ff8a3d',
+  plan: '#4d7fd1',
+  neutro: '#8d8d8d',
+  fondo: '#b9b4a8',
 };
 
 let mapa = null;
 let capas = {};
-let alPulsar = null;
 
 /* ============================================================
    Se crea el mapa una vez
    ============================================================ */
-export function arrancaMapa(cont, opciones = {}) {
-  alPulsar = opciones.alPulsar || null;
-
+export function arrancaMapa(cont) {
   mapa = L.map(cont, {
     zoomControl: true,
     attributionControl: true,
-    preferCanvas: true,        /* con miles de puntos, canvas es mucho mas rapido */
-  }).setView([19.35, -100.12], 11);
+    preferCanvas: true,        /* con muchos puntos, canvas es mucho mas rapido */
+  }).setView([-18.9, -41.5], 11);   /* Valadares, Brasil */
 
   L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
     maxZoom: 17,
@@ -45,9 +57,9 @@ export function arrancaMapa(cont, opciones = {}) {
   }).addTo(mapa);
 
   capas = {
+    fondo: L.layerGroup().addTo(mapa),
     tracks: L.layerGroup().addTo(mapa),
     termicas: L.layerGroup().addTo(mapa),
-    globo: L.layerGroup().addTo(mapa),
   };
 
   return mapa;
@@ -56,118 +68,135 @@ export function arrancaMapa(cont, opciones = {}) {
 export function hayMapa() { return !!mapa; }
 
 /* ============================================================
-   El color de cada tramo del track
-   ============================================================ */
-function colorDe(p, antes) {
-  if (p.vs == null) return COLOR.neutro;
-  if (p.vs > 0.3) return COLOR.sube;
-  if (p.vs < -0.3) return COLOR.plan;
-  return COLOR.neutro;
+   Adelgazar: de una lista larga de puntos, coger unos pocos
+   ============================================================
+   Para dibujar una linea no hacen falta todos los puntos. Con uno de cada N se
+   ve igual, y la linea pesa N veces menos.
+
+   El primero y el ultimo SIEMPRE van: son el despegue y el aterrizaje.
+*/
+function adelgaza(pts, cada) {
+  if (pts.length <= 3 || cada <= 1) return pts;
+  const out = [pts[0]];
+  for (let i = cada; i < pts.length - 1; i += cada) out.push(pts[i]);
+  out.push(pts[pts.length - 1]);
+  return out;
 }
 
 /* ============================================================
    Pinta un vuelo
    ============================================================
-   Se dibuja por trozos y no punto a punto: 1700 puntos sueltos son 1700 objetos
-   en el mapa, y con cuatro pilotos se arrastra. Agrupando por color, pasan a ser
-   unas decenas de lineas.
+   vuelo:    el que se mira
+   enColor:  true = coloreado por tramos; false = una linea gris (los de fondo)
 */
 export function pintaVuelo(vuelo, opciones = {}) {
   if (!mapa || !vuelo || !vuelo.puntos) return;
-  const grupo = opciones.grupo || 'tracks';
-
+  const enColor = opciones.enColor !== false;
+  const grupo = enColor ? 'tracks' : 'fondo';
   const puntos = vuelo.puntos;
-  const trozos = [];
-  let actual = null;
+  /* los de fondo se adelgazan mas: solo tienen que dar contexto */
+  const cada = enColor ? Math.max(1, Math.floor(puntos.length / 900)) : Math.max(1, Math.floor(puntos.length / 350));
 
-  for (let i = 1; i < puntos.length; i++) {
-    const p = puntos[i];
-    const c = colorDe(p);
-    if (!actual || actual.color !== c) {
-      if (actual) trozos.push(actual);
-      actual = { color: c, pts: [[puntos[i - 1].lat, puntos[i - 1].lon]] };
-    }
-    actual.pts.push([p.lat, p.lon]);
-  }
-  if (actual) trozos.push(actual);
-
-  const resalte = opciones.resalte;   /* el vuelo seleccionado va mas grueso */
   const lineas = [];
-  for (const t of trozos) {
-    if (t.pts.length < 2) continue;
-    lineas.push(L.polyline(t.pts, {
-      color: t.color,
-      weight: resalte ? 4 : 2.5,
-      opacity: resalte ? 0.95 : 0.65,
-      lineJoin: 'round',
-    }));
+
+  if (!enColor) {
+    /* ---- vuelo de fondo: una sola linea gris ---- */
+    const pts = adelgaza(puntos.map(p => [p.lat, p.lon]), cada);
+    if (pts.length > 1) {
+      lineas.push(L.polyline(pts, {
+        color: COLOR.fondo, weight: 1.6, opacity: 0.55, lineJoin: 'round',
+      }).addTo(capas[grupo]));
+    }
+    return { lineas };
   }
-  lineas.forEach(l => l.addTo(capas[grupo]));
 
-  /* ---------- el despegue y el aterrizaje ---------- */
+  /* ---- el que se mira: coloreado por TRAMOS ----
+     Se recorren los tramos (subidas y planeos) que ya estan calculados, y cada
+     uno se pinta entero de su color. Asi son ~90 lineas y no 486. */
+  const tramos = (vuelo.tramos && vuelo.tramos.length) ? vuelo.tramos : null;
+
+  if (tramos) {
+    for (const tr of tramos) {
+      const color = tr.tipo === 'subida' ? COLOR.sube : COLOR.plan;
+      const trozo = puntos.slice(tr.desde, tr.hasta + 1);
+      if (trozo.length < 2) continue;
+      const pts = adelgaza(trozo.map(p => [p.lat, p.lon]), Math.max(1, Math.floor(trozo.length / 60)));
+      lineas.push(L.polyline(pts, {
+        color, weight: 3.5, opacity: 0.92, lineJoin: 'round',
+      }).addTo(capas[grupo]));
+    }
+  } else {
+    /* sin tramos (un vuelo muy corto o raro): una linea sola */
+    const pts = adelgaza(puntos.map(p => [p.lat, p.lon]), cada);
+    lineas.push(L.polyline(pts, {
+      color: COLOR.sube, weight: 3.5, opacity: 0.9,
+    }).addTo(capas[grupo]));
+  }
+
+  /* ---- el despegue y el aterrizaje ---- */
   const a = puntos[0], b = puntos[puntos.length - 1];
-  const marcas = [];
-  marcas.push(L.circleMarker([a.lat, a.lon], {
-    radius: 6, color: '#fff', weight: 2.5, fillColor: '#2f7a4d', fillOpacity: 1,
-  }).bindTooltip('Despegue · ' + a.hora.slice(0, 2) + ':' + a.hora.slice(2, 4)));
-  marcas.push(L.circleMarker([b.lat, b.lon], {
-    radius: 6, color: '#fff', weight: 2.5, fillColor: '#b3453a', fillOpacity: 1,
-  }).bindTooltip('Aterrizaje · ' + b.hora.slice(0, 2) + ':' + b.hora.slice(2, 4)));
-  marcas.forEach(m => m.addTo(capas[grupo]));
+  const marcas = [
+    L.circleMarker([a.lat, a.lon], {
+      radius: 6, color: '#fff', weight: 2.5, fillColor: '#2f7a4d', fillOpacity: 1,
+    }).bindTooltip('Despegue · ' + horaDe(a)).addTo(capas[grupo]),
+    L.circleMarker([b.lat, b.lon], {
+      radius: 6, color: '#fff', weight: 2.5, fillColor: '#b3453a', fillOpacity: 1,
+    }).bindTooltip('Aterrizaje · ' + horaDe(b)).addTo(capas[grupo]),
+  ];
 
-  return { lineas, marcas, trozos };
+  return { lineas, marcas };
+}
+
+function horaDe(p) {
+  if (!p || !p.hora) return '';
+  return p.hora.slice(0, 2) + ':' + p.hora.slice(2, 4);
 }
 
 /* ============================================================
    Las termicas
    ============================================================
-   Un circulo con el radio de la vuelta. Se saca del recorrido del tramo partido
-   por las vueltas: si diste 3 vueltas y el recorrido fue de 900 m, cada vuelta
-   son 300 m de circunferencia, y el radio sale de ahi.
+   Un circulo con el radio de la vuelta que diste: si diste 3 vueltas y el
+   recorrido fue de 900 m, cada vuelta son 300 m de circunferencia, y el radio
+   sale de ahi.
 */
-export function pintaTermicas(vuelo, opciones = {}) {
+export function pintaTermicas(vuelo) {
   if (!mapa || !vuelo || !vuelo.termicas) return;
-  const quitar = opciones.quitar !== false;
-  if (quitar) capas.termicas.clearLayers();
+  capas.termicas.clearLayers();
 
   for (const t of vuelo.termicas) {
     if (!t.esTermica) continue;
-    /* el radio, a partir del recorrido de las vueltas */
     const circ = t.vueltas > 0.5 ? (t.tramos.reduce((a, x) => a + x.recorrido, 0) / t.vueltas) : 250;
     const radio = Math.max(30, Math.min(400, circ / (2 * Math.PI)));
 
-    const c = L.circle([t.lat, t.lon], {
+    L.circle([t.lat, t.lon], {
       radius: radio,
       color: t.vs > 1.5 ? '#2f7a4d' : '#a8742c',
       weight: 1.8, opacity: 0.85,
       fillColor: t.vs > 1.5 ? '#2f7a4d' : '#a8742c',
       fillOpacity: 0.12,
-    });
-    c.bindTooltip(
+    }).bindTooltip(
       'Térmica ' + t.n + ' · ' + (t.vs != null ? '+' + t.vs.toFixed(1) + ' m/s' : '—') +
       ' · +' + Math.round(t.ganancia || 0) + ' m · ' + t.vueltas.toFixed(1) + ' vueltas',
       { sticky: true }
-    );
-    c.addTo(capas.termicas);
+    ).addTo(capas.termicas);
   }
 }
 
 /* ============================================================
-   Encaja el mapa a los vuelos que hay
+   Encaja el mapa a lo que hay
    ============================================================ */
 export function encuadra(vuelos) {
   if (!mapa) return;
   const pts = [];
   for (const v of vuelos) {
     if (!v || !v.puntos) continue;
-    /* no hace falta meter los 1700 puntos para calcular el encuadre */
-    for (let i = 0; i < v.puntos.length; i += Math.max(1, Math.floor(v.puntos.length / 200))) {
+    for (let i = 0; i < v.puntos.length; i += Math.max(1, Math.floor(v.puntos.length / 150))) {
       const p = v.puntos[i];
       pts.push([p.lat, p.lon]);
     }
   }
   if (!pts.length) return;
-  mapa.fitBounds(L.latLngBounds(pts).pad(0.12));
+  mapa.fitBounds(L.latLngBounds(pts).pad(0.1));
 }
 
 export function limpia(grupo) {
