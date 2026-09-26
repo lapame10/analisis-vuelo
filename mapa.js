@@ -45,6 +45,13 @@ let capas = {};
    Se crea el mapa una vez
    ============================================================ */
 export function arrancaMapa(cont) {
+  /* ===== SI LEAFLET NO ESTA, SE SIGUE SIN MAPA =====
+     Antes, si Leaflet no habia cargado, esto lanzaba "L is not defined" y se
+     llevaba por delante TODO el arranque: la app quedaba en blanco. Un mapa que
+     no carga es una molestia; una app que no abre es otra cosa.
+     Ahora se comprueba y se devuelve null. El que llama decide que hacer. */
+  if (typeof L === 'undefined') return null;
+
   mapa = L.map(cont, {
     zoomControl: true,
     attributionControl: true,

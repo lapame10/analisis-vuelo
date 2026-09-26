@@ -10,8 +10,14 @@
 <link rel="apple-touch-icon" href="icono-192.png">
 
 <!-- Leaflet: solo el mapa. El resto va dibujado a mano. -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- ===== LEAFLET, EN EL REPO Y NO EN UN CDN =====
+     Antes se cargaba de unpkg.com. Y si ese CDN tarda o falla, el navegador
+     lanza "L is not defined" al montar el mapa y LA APP NO ABRE: se queda en
+     blanco. Paso en la primera prueba en produccion.
+     Ahora va en lib/, que carga del mismo sitio que la app: si la app carga,
+     Leaflet carga. -->
+<link rel="stylesheet" href="lib/leaflet.css">
+<script src="lib/leaflet.js"></script>
 
 <style>
 /* ============================================================

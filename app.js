@@ -45,7 +45,17 @@ function aviso(txt, ms = 3600) {
 async function arranca() {
   /* el mapa se monta antes de nada: Leaflet no funciona si el contenedor está
      oculto (mide cero) */
-  if (!listo) { Mapa.arrancaMapa('mapa'); listo = true; }
+  /* el mapa, si se puede. Si Leaflet no cargó, se sigue sin él: los numeros, los
+     graficos y las observaciones funcionan igual. */
+  if (!listo) {
+    const m = Mapa.arrancaMapa('mapa');
+    listo = true;
+    if (!m) {
+      const cont = document.getElementById('mapa');
+      if (cont) cont.innerHTML = '<div class="vacio" style="padding:40px 16px">' +
+        'El mapa no se pudo cargar.<br><span class="mini">El resto del análisis funciona igual.</span></div>';
+    }
+  }
 
   document.getElementById('pSecreto').classList.remove('on');
   document.getElementById('pAnalisis').classList.add('on');
