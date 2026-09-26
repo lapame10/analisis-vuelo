@@ -219,16 +219,32 @@ export function encuadra(vuelos) {
      Si el contenedor mide cero, fitBounds calcula un encuadre absurdo (o ninguno)
      y el mapa se queda en el mundo entero. Cuando pasa eso, se reintenta en el
      siguiente ciclo en vez de dar por hecho que salio bien. */
+  /* Se hace SIEMPRE invalidateSize antes de encuadrar. Es lo que arreglo el
+     problema: el mapa se creo cuando su contenedor todavia no tenia el tamaño
+     definitivo (el navegador aun estaba colocando la pagina), Leaflet memorizo
+     un tamaño equivocado, y a partir de ahi cualquier fitBounds salia mal — el
+     mapa se quedaba en el mundo entero. Llamado a mano despues funcionaba, que
+     es la pista de que el problema era el momento, no el calculo.
+
+     Hacerlo siempre es barato (una lectura del DOM) y no depende de adivinar
+     cuando esta listo. */
   const hacerlo = () => {
+    try { mapa.invalidateSize(); } catch (e) {}
     const c = mapa.getContainer();
     if (!c || c.clientWidth < 40 || c.clientHeight < 40) return false;
-    mapa.fitBounds(L.latLngBounds(pts).pad(0.1), { animate: false });
-    return true;
+    try {
+      mapa.fitBounds(L.latLngBounds(pts).pad(0.1), { animate: false });
+      return true;
+    } catch (e) { return false; }
   };
 
+  /* y si el contenedor aun no tiene tamaño, se reintenta un par de veces */
   if (!hacerlo()) {
-    mapa.invalidateSize();
-    setTimeout(() => { mapa.invalidateSize(); hacerlo(); }, 200);
+    let intentos = 0;
+    const t = setInterval(() => {
+      intentos++;
+      if (hacerlo() || intentos > 6) clearInterval(t);
+    }, 250);
   }
 }
 
