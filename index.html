@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Análisis de vuelo</title>
+<meta name="theme-color" content="#2e4a6f">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icono-192.png">
+
+<!-- Leaflet: solo el mapa. El resto va dibujado a mano. -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+/* ============================================================
+   Estilo
+   ============================================================
+   Claro y sobrio, de instrumento. Esto se mira mucho rato y muchas veces al
+   sol, asi que: fondo claro, letra grande en los numeros, y el color solo para
+   lo que informa (naranja = subiendo, azul = planeando).
+   ============================================================ */
+:root{
+  --bg:#f4f2ee; --panel:#fff; --ink:#1e2430; --sub:#6b7280;
+  --line:#e3dfd7; --blue:#2e4a6f;
+  --sube:#ff8a3d; --plan:#4d7fd1;
+  --ok:#2f7a4d; --mal:#b3453a;
+  --r:12px;
+}
+*{ box-sizing:border-box }
+html,body{ margin:0; height:100% }
+body{
+  background:var(--bg); color:var(--ink);
+  font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  -webkit-text-size-adjust:100%;
+}
+
+/* cabecera */
+header{
+  background:var(--blue); color:#fff;
+  padding:calc(11px + env(safe-area-inset-top)) 14px 11px;
+  position:sticky; top:0; z-index:500;
+}
+header .in{ max-width:1100px; margin:0 auto; display:flex; align-items:center; gap:10px }
+header h1{ margin:0; font-size:16px; font-weight:650; letter-spacing:-.2px; flex:1 }
+header h1 small{ display:block; font-weight:400; font-size:11.5px; opacity:.75; letter-spacing:0 }
+header button, header a{
+  background:rgba(255,255,255,.14); border:0; color:#fff; font:inherit; font-size:13px;
+  padding:6px 11px; border-radius:8px; cursor:pointer; text-decoration:none;
+}
+header button:hover{ background:rgba(255,255,255,.24) }
+
+.wrap{ max-width:1100px; margin:0 auto; padding:14px }
+
+/* ---------- la zona de carga ---------- */
+#carga{ text-align:center; padding:40px 16px }
+#carga .caja{
+  border:2px dashed #c9c4ba; border-radius:16px; background:#fbfaf8;
+  padding:38px 20px; max-width:560px; margin:0 auto; transition:border-color .15s, background .15s;
+}
+#carga .caja.encima{ border-color:var(--blue); background:#eef3f9 }
+#carga h2{ margin:0 0 6px; font-size:19px }
+#carga p{ color:var(--sub); font-size:13.5px; margin:0 0 16px }
+#carga .pie{ font-size:12px; color:var(--sub); margin-top:22px; line-height:1.6 }
+
+/* ---------- tarjetas ---------- */
+.card{ background:var(--panel); border:1px solid var(--line); border-radius:var(--r);
+  padding:14px; margin:0 0 12px }
+.card h2{ margin:0 0 3px; font-size:15.5px; font-weight:650 }
+.card h3{ margin:0 0 8px; font-size:13px; font-weight:650; color:var(--sub);
+  text-transform:uppercase; letter-spacing:.5px }
+.mini{ font-size:12px; color:var(--sub) }
+.mt{ margin-top:10px } .mt2{ margin-top:16px } .mb{ margin-bottom:10px }
+
+/* ---------- los numeros grandes ---------- */
+.mets{ display:grid; grid-template-columns:repeat(auto-fit,minmax(104px,1fr)); gap:1px;
+  background:var(--line); border:1px solid var(--line); border-radius:10px; overflow:hidden }
+.mets div{ background:var(--panel); padding:10px 11px }
+.mets .et{ font-size:10.5px; color:var(--sub); text-transform:uppercase; letter-spacing:.4px }
+.mets .va{ font-size:19px; font-weight:650; letter-spacing:-.4px; margin-top:1px; font-variant-numeric:tabular-nums }
+.mets .va.sube{ color:var(--sube) }
+.mets .va.baja{ color:var(--plan) }
+
+/* ---------- el mapa ---------- */
+#mapa{ height:440px; border-radius:var(--r); border:1px solid var(--line); overflow:hidden }
+@media(max-width:700px){ #mapa{ height:320px } }
+.leaflet-container{ font:inherit; background:#eceae4 }
+
+/* ---------- los graficos ---------- */
+.graf{ margin:2px 0 0 }
+.vacio{ font-size:12.5px; color:var(--sub); padding:14px 0; text-align:center }
+.banda{ margin:8px 0 2px }
+
+/* ---------- la tabla ---------- */
+table{ width:100%; border-collapse:collapse; font-size:13.5px; font-variant-numeric:tabular-nums }
+th{ text-align:right; font-size:10.5px; color:var(--sub); text-transform:uppercase;
+  letter-spacing:.4px; font-weight:600; padding:5px 7px; border-bottom:1px solid var(--line) }
+th:first-child{ text-align:left }
+td{ text-align:right; padding:7px; border-bottom:1px solid #f0ede7 }
+td:first-child{ text-align:left; font-weight:600 }
+tr.sel td{ background:#eef3f9 }
+tr.clic{ cursor:pointer }
+tr.clic:hover td{ background:#f7f9fc }
+.pos{ color:var(--ok) } .neg{ color:var(--mal) }
+.chip{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px;
+  vertical-align:middle }
+
+/* ---------- la lista de termicas ---------- */
+.term{ display:flex; align-items:center; gap:10px; padding:9px 4px;
+  border-bottom:1px solid #f0ede7; font-size:13.5px }
+.term:last-child{ border:0 }
+.term .n{ width:24px; height:24px; border-radius:50%; background:#eef3f9; color:var(--blue);
+  font-size:11.5px; font-weight:700; display:flex; align-items:center; justify-content:center; flex:none }
+.term .q{ flex:1 }
+.term .qq{ font-weight:650; font-variant-numeric:tabular-nums }
+
+/* ---------- botones ---------- */
+.btn{ border:0; border-radius:9px; padding:10px 15px; font:inherit; font-size:14px;
+  font-weight:600; cursor:pointer; background:var(--blue); color:#fff }
+.btn.sec{ background:#e9eef4; color:var(--blue) }
+.btn.gh{ background:transparent; color:var(--sub); border:1px solid var(--line) }
+.row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center }
+
+/* ---------- pantallas ---------- */
+.pant{ display:none }
+.pant.on{ display:block }
+
+/* ---------- el aviso ---------- */
+#aviso{
+  position:fixed; left:50%; bottom:calc(18px + env(safe-area-inset-bottom));
+  transform:translateX(-50%) translateY(160%);
+  background:var(--ink); color:#fff; padding:11px 17px; border-radius:10px;
+  font-size:13.5px; z-index:900; max-width:88vw; text-align:center;
+  transition:transform .22s ease; pointer-events:none;
+}
+#aviso.on{ transform:translateX(-50%) translateY(0) }
+
+/* ---------- el detalle del cursor ---------- */
+#lectura{ font-size:12.5px; color:var(--sub); min-height:18px; font-variant-numeric:tabular-nums }
+#lectura b{ color:var(--ink) }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="in">
+    <h1>Análisis de vuelo<small id="subtitulo">Sube tus archivos IGC</small></h1>
+    <button id="bCargar" style="display:none">Añadir IGC</button>
+    <button id="bVaciar" style="display:none">Vaciar</button>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ PANTALLA 1: CARGAR ============ -->
+  <section class="pant on" id="pCarga">
+    <div id="carga">
+      <div class="caja" id="caja">
+        <h2>Tira aquí tus archivos IGC</h2>
+        <p>Uno o varios. Se quedan en tu teléfono: no se sube nada a ningún sitio.</p>
+        <button class="btn" id="bElegir">Elegir archivos</button>
+        <input type="file" id="input" accept=".igc,.IGC,.txt" multiple hidden>
+      </div>
+      <div class="pie">
+        El IGC es el archivo que guarda tu vario.<br>
+        De ahí se sacan el viento, las térmicas, los planeos y la eficiencia.<br>
+        <b>El viento se calcula a partir de las vueltas que diste</b> — no se pide ni se estima a ojo.
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PANTALLA 2: ANÁLISIS ============ -->
+  <section class="pant" id="pAnalisis">
+
+    <div class="card" style="padding:0;border:0;background:transparent">
+      <div id="mapa"></div>
+      <div class="row mt" style="justify-content:space-between">
+        <div id="lectura">Mueve el dedo por los gráficos para ver el momento.</div>
+        <div class="row" id="capas"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 id="quienEs">Vuelo</h3>
+      <div class="mets" id="mets"></div>
+    </div>
+
+    <div class="card">
+      <h3>Altitud <span class="mini" id="altEscala"></span></h3>
+      <div id="gAlt"></div>
+      <div class="banda" id="gBanda"></div>
+      <h3 class="mt2">Vario <span class="mini">m/s · naranja = subiendo</span></h3>
+      <div id="gVario"></div>
+      <h3 class="mt2">Velocidad <span class="mini">km/h</span></h3>
+      <div id="gVel"></div>
+    </div>
+
+    <div class="card">
+      <h3>Los vuelos</h3>
+      <table>
+        <thead><tr>
+          <th>Piloto</th><th>Dist.</th><th>Tiempo</th><th>+Altura</th>
+          <th>Mejor subida</th><th>Planeo</th><th>Viento</th>
+        </tr></thead>
+        <tbody id="tabla"></tbody>
+      </table>
+      <p class="mini mt">Toca una fila para ver ese vuelo en el mapa y los gráficos.</p>
+    </div>
+
+    <div class="card">
+      <h3>Térmicas <span class="mini" id="nTerm"></span></h3>
+      <div id="termicas"></div>
+    </div>
+
+    <div class="card">
+      <h3>Comparación <span class="mini">altitud desde el despegue de cada uno</span></h3>
+      <div id="gComp"></div>
+    </div>
+
+  </section>
+
+</main>
+
+<div id="aviso"></div>
+
+<script type="module">
+import { parseIGC } from './igc.js';
+import { analiza, fmt, distancia } from './vuelo.js';
+import * as Mapa from './mapa.js';
+import * as Graf from './grafico.js';
+
+/* ============================================================
+   El estado
+   ============================================================ */
+const COLORES = ['#2e4a6f', '#ff8a3d', '#2f7a4d', '#a8742c', '#7a4d9e', '#b3453a', '#4d7fd1'];
+let vuelos = [];      /* [{ nombre, puntos, tramos, termicas, viento, resumen, color }] */
+let cual = 0;         /* el que se está mirando */
+let listo = false;    /* el mapa ya está montado */
+
+/* ============================================================
+   Un aviso, sin gritar
+   ============================================================ */
+let tAviso = null;
+function aviso(txt, ms = 3600) {
+  const a = document.getElementById('aviso');
+  a.textContent = txt;
+  a.classList.add('on');
+  clearTimeout(tAviso);
+  tAviso = setTimeout(() => {
+    a.classList.remove('on');
+    setTimeout(() => { a.textContent = ''; }, 250);
+  }, ms);
+}
+
+/* ============================================================
+   Leer los archivos
+   ============================================================
+   Se lee el texto y se analiza. Si un archivo no se entiende, se DICE, y no se
+   inventa un vuelo: un IGC que no se lee es un IGC que no se lee.
+*/
+async function cargaArchivos(archivos) {
+  if (!archivos || !archivos.length) return;
+
+  let bien = 0;
+  const fallos = [];
+
+  for (const f of archivos) {
+    let texto = '';
+    try { texto = await f.text(); }
+    catch (e) { fallos.push(f.name + ': no se pudo leer'); continue; }
+
+    const r = analiza(texto, parseIGC);
+    if (!r.ok) { fallos.push(f.name + ': ' + r.motivo); continue; }
+
+    /* el nombre: el del piloto si viene en la cabecera, y si no el del archivo */
+    let nombre = (r.nombre || '').trim();
+    if (!nombre) nombre = f.name.replace(/\.igc$/i, '').replace(/[_-]+/g, ' ').slice(0, 26);
+
+    vuelos.push({
+      ...r,
+      nombre,
+      archivo: f.name,
+      color: COLORES[vuelos.length % COLORES.length],
+    });
+    bien++;
+  }
+
+  if (!bien) {
+    aviso(fallos.length ? fallos[0] : 'No se pudo leer ningún archivo.', 5000);
+    if (fallos.length > 1) console.warn('archivos con problema:', fallos);
+    return;
+  }
+
+  if (fallos.length) aviso(bien + ' vuelo(s) leídos · ' + fallos.length + ' con problema', 5000);
+  else aviso(bien === 1 ? 'Vuelo leído' : bien + ' vuelos leídos');
+
+  /* el primero que se mire: el que más voló */
+  cual = vuelos.reduce((mejor, v, i) => {
+    const d = (v.resumen && v.resumen.recorrido) || 0;
+    const dm = (vuelos[mejor].resumen && vuelos[mejor].resumen.recorrido) || 0;
+    return d > dm ? i : mejor;
+  }, 0);
+
+  abreAnalisis();
+}
+
+/* ============================================================
+   Cambiar de pantalla
+   ============================================================ */
+function abreAnalisis() {
+  document.getElementById('pCarga').classList.remove('on');
+  document.getElementById('pAnalisis').classList.add('on');
+  document.getElementById('bCargar').style.display = '';
+  document.getElementById('bVaciar').style.display = '';
+
+  /* el mapa se monta la primera vez, y sólo entonces: Leaflet no funciona si el
+     contenedor está oculto (mide cero) */
+  if (!listo) {
+    Mapa.arrancaMapa('mapa');
+    listo = true;
+  }
+  pinta();
+}
+
+function pinta() {
+  const v = vuelos[cual];
+  if (!v) return;
+
+  document.getElementById('subtitulo').textContent =
+    vuelos.length === 1 ? v.nombre : (vuelos.length + ' vuelos · viendo ' + v.nombre);
+
+  pintaMets(v);
+  pintaTabla();
+  pintaTermicas(v);
+  pintaGraficos(v);
+
+  Mapa.limpia();
+  /* los demás, en gris fino detrás */
+  vuelos.forEach((o, i) => {
+    if (i !== cual) Mapa.pintaVuelo(o, { resalte: false });
+  });
+  Mapa.pintaVuelo(v, { resalte: true });
+  Mapa.pintaTermicas(v);
+  Mapa.encuadra([v]);
+}
+
+/* ============================================================
+   Los números grandes
+   ============================================================ */
+function pintaMets(v) {
+  const r = v.resumen;
+  document.getElementById('quienEs').textContent = v.nombre;
+
+  if (!r) {
+    document.getElementById('mets').innerHTML =
+      '<div><div class="et">Sin datos</div><div class="va">—</div></div>';
+    return;
+  }
+
+  const ms = (val, dec = 0) => val == null ? '—' : Math.round(val).toLocaleString('es-MX');
+  const celda = (et, va, clase = '') =>
+    `<div><div class="et">${et}</div><div class="va ${clase}">${va}</div></div>`;
+
+  let h = '';
+  h += celda('Distancia', ms(r.recorrido / 1000) + ' <span style="font-size:12px">km</span>');
+  h += celda('Tiempo', fmt.hms(r.segundos));
+  h += celda('Alt. máxima', ms(r.altMax) + ' <span style="font-size:12px">m</span>');
+  h += celda('+Altura ganada', ms(r.ganado) + ' <span style="font-size:12px">m</span>', 'sube');
+  h += celda('Vario medio vuelo', r.vsMedio == null ? '—' : fmt.ms(r.vsMedio), r.vsMedio > 0 ? 'sube' : 'baja');
+  h += celda('Mejor subida', r.mejorSubida ? fmt.ms(r.mejorSubida.vs) : '—', 'sube');
+  h += celda('Mejor planeo', r.mejorPlaneo ? fmt.gr(r.mejorPlaneo.gr) + ' : 1' : '—');
+  h += celda('Planeo medio', r.grMedio ? fmt.gr(r.grMedio) + ' : 1' : '—');
+  h += celda('Vel. media', fmt.kmh(r.hsMedia));
+  h += celda('% subiendo', fmt.pct(r.eficiencia));
+  h += celda('Térmicas', r.nTermicas);
+  h += celda('Viento', v.viento
+    ? Math.round(v.viento.vel) + ' <span style="font-size:12px">km/h ' + fmt.grados(v.viento.dir) + '</span>'
+    : '—');
+
+  document.getElementById('mets').innerHTML = h;
+
+  document.getElementById('altEscala').textContent =
+    r.altMin != null ? fmt.m(r.altMin) + ' a ' + fmt.m(r.altMax) : '';
+}
+
+/* ============================================================
+   La tabla de los vuelos
+   ============================================================ */
+function pintaTabla() {
+  const tb = document.getElementById('tabla');
+
+  /* para comparar de verdad se ordena por distancia recorrida, que es lo que
+     mide quien voló más lejos */
+  const orden = vuelos.map((v, i) => ({ v, i }))
+    .sort((a, b) => ((b.v.resumen && b.v.resumen.recorrido) || 0) - ((a.v.resumen && a.v.resumen.recorrido) || 0));
+
+  tb.innerHTML = orden.map(({ v, i }) => {
+    const r = v.resumen || {};
+    const cel = (x, dec = 0) => x == null ? '—' : Number(x).toLocaleString('es-MX', { maximumFractionDigits: dec });
+    return `<tr class="clic ${i === cual ? 'sel' : ''}" data-i="${i}">
+      <td><span class="chip" style="background:${v.color}"></span>${escapa(v.nombre)}</td>
+      <td>${r.recorrido ? cel(r.recorrido / 1000, 1) + ' km' : '—'}</td>
+      <td>${r.segundos ? fmt.hms(r.segundos) : '—'}</td>
+      <td class="pos">${r.ganado ? '+' + cel(r.ganado) + ' m' : '—'}</td>
+      <td>${r.mejorSubida ? fmt.ms(r.mejorSubida.vs) : '—'}</td>
+      <td>${r.grMedio ? fmt.gr(r.grMedio) + ' : 1' : '—'}</td>
+      <td>${v.viento ? Math.round(v.viento.vel) + ' km/h ' + fmt.grados(v.viento.dir) : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  tb.querySelectorAll('tr').forEach(tr => {
+    tr.onclick = () => { cual = +tr.dataset.i; pinta(); };
+  });
+}
+
+/* ============================================================
+   Las térmicas
+   ============================================================ */
+function pintaTermicas(v) {
+  const cont = document.getElementById('termicas');
+  const t = (v.termicas || []).filter(x => x.esTermica);
+  document.getElementById('nTerm').textContent = t.length
+    ? t.length + ' encontradas' : 'ninguna';
+
+  if (!t.length) {
+    cont.innerHTML = '<p class="mini">No se encontraron vueltas suficientes. ' +
+      'Puede ser un vuelo de ladera o de planeo largo, sin térmicas.</p>';
+    return;
+  }
+
+  /* la mejor térmica, para marcarla */
+  const mejor = t.reduce((m, x) => ((x.vs || 0) > (m.vs || 0) ? x : m), t[0]);
+
+  cont.innerHTML = t.map(x => {
+    const esMejor = x === mejor;
+    const hora = v.puntos[x.tramos[0].desde] ? horaDe(v.puntos[x.tramos[0].desde].t) : '';
+    return `<div class="term">
+      <div class="n" ${esMejor ? 'style="background:#e8f3ec;color:#2f7a4d"' : ''}>${x.n}</div>
+      <div class="q">
+        <b>${hora}</b> · ${fmt.hms(x.segundos)} · ${x.vueltas.toFixed(1)} vueltas
+      </div>
+      <div class="qq" style="text-align:right">
+        <span class="${x.vs > 0 ? 'pos' : ''}">${x.vs == null ? '—' : fmt.ms(x.vs)}</span><br>
+        <span class="mini">+${Math.round(x.ganancia || 0)} m</span>
+      </div>
+    </div>`;
+  }).join('') + (mejor.vs ? `<p class="mini mt">La mejor fue la ${mejor.n}, con ${fmt.ms(mejor.vs)} y +${Math.round(mejor.ganancia)} m.</p>` : '');
+}
+
+/* ============================================================
+   Los gráficos
+   ============================================================ */
+function pintaGraficos(v) {
+  const otros = vuelos.filter((_, i) => i !== cual);
+
+  Graf.graficaVuelo({
+    alt: document.getElementById('gAlt'),
+    vario: document.getElementById('gVario'),
+    vel: document.getElementById('gVel'),
+    banda: document.getElementById('gBanda'),
+  }, v, otros, {
+    alMover: (t) => muestraLectura(v, t),
+  });
+
+  Graf.graficaComparacion(document.getElementById('gComp'), vuelos,
+    { colores: vuelos.map(x => x.color) });
+
+  document.getElementById('lectura').innerHTML = 'Mueve el dedo por los gráficos para ver el momento.';
+}
+
+/* ---------- lo que dice el cursor al pasar ---------- */
+function muestraLectura(v, t) {
+  /* el punto más cercano a ese instante */
+  const p = v.puntos;
+  let lo = 0, hi = p.length - 1;
+  while (hi - lo > 1) {
+    const m = (lo + hi) >> 1;
+    if (p[m].t < t) lo = m; else hi = m;
+  }
+  const q = Math.abs(p[lo].t - t) < Math.abs(p[hi].t - t) ? p[lo] : p[hi];
+
+  const partes = ['<b>' + horaDe(q.t) + '</b>'];
+  if (q.altReal != null) partes.push(Math.round(q.altReal) + ' m');
+  if (q.vs != null) partes.push(fmt.ms(q.vs));
+  if (q.hs != null && q.hs < 120) partes.push(fmt.kmh(q.hs));
+  if (q.rumbo != null) partes.push(fmt.grados(q.rumbo));
+  document.getElementById('lectura').innerHTML = partes.join(' · ');
+}
+
+function horaDe(t) {
+  const h = Math.floor(t / 3600) % 24, m = Math.floor((t % 3600) / 60);
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+}
+
+function escapa(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/* ============================================================
+   Los botones y la carga
+   ============================================================ */
+const input = document.getElementById('input');
+const caja = document.getElementById('caja');
+
+document.getElementById('bElegir').onclick = () => input.click();
+document.getElementById('bCargar').onclick = () => input.click();
+input.onchange = async () => {
+  /* ===== HAY QUE COPIAR LA LISTA ANTES DE VACIAR EL CAMPO =====
+     Con  input.value = ''  se borra la lista de archivos AL INSTANTE, y si se
+     hace mientras se estan leyendo, los que quedan por leer desaparecen. Con
+     tres archivos solo se cargaba uno. Por eso primero se copia la lista a un
+     array (que ya es tuyo y no lo toca nadie) y despues se vacia. */
+  const archivos = [...input.files];
+  input.value = '';
+  await cargaArchivos(archivos);
+};
+
+document.getElementById('bVaciar').onclick = () => {
+  vuelos = []; cual = 0; listo = false;
+  document.getElementById('pAnalisis').classList.remove('on');
+  document.getElementById('pCarga').classList.add('on');
+  document.getElementById('bCargar').style.display = 'none';
+  document.getElementById('bVaciar').style.display = 'none';
+  document.getElementById('subtitulo').textContent = 'Sube tus archivos IGC';
+};
+
+/* arrastrar y soltar */
+['dragenter', 'dragover'].forEach(ev =>
+  document.addEventListener(ev, e => {
+    if (!e.target.closest || !document.getElementById('pCarga').classList.contains('on')) return;
+    e.preventDefault(); caja.classList.add('encima');
+  }));
+['dragleave', 'drop'].forEach(ev =>
+  document.addEventListener(ev, e => {
+    e.preventDefault(); caja.classList.remove('encima');
+  }));
+document.addEventListener('drop', e => {
+  if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) cargaArchivos([...e.dataTransfer.files]);
+});
+</script>
+</body>
+</html>
