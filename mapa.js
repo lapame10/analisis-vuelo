@@ -58,10 +58,21 @@ export function arrancaMapa(cont) {
     preferCanvas: true,        /* con muchos puntos, canvas es mucho mas rapido */
   }).setView([-18.9, -41.5], 11);   /* Valadares, Brasil */
 
-  L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+  /* ===== SIN {s} =====
+     Con {s} Leaflet añade un subdominio (a., b., c.) y algunos servidores de
+     teselas no los atienden. Sin {s} va directo y funciona. */
+  L.tileLayer('https://tile.opentopomap.org/{z}/{x}/{y}.png', {
     maxZoom: 17,
     attribution: 'Mapas: © OpenTopoMap · Datos: © OpenStreetMap',
   }).addTo(mapa);
+
+  /* ⚠️ NO PONER AQUI UN invalidateSize CON setTimeout.
+     Lo puse, y era peor el remedio: el encuadre del vuelo ocurre despues (hay
+     que descargar y analizar los IGC primero) y el invalidateSize llegaba MAS
+     TARDE, con el mapa ya encuadrado, y lo devolvia al mundo entero. El mapa se
+     quedaba con las teselas del planeta.
+     El invalidateSize lo hace encuadra(), solo si hace falta y en el momento
+     justo. Aqui no va. */
 
   capas = {
     fondo: L.layerGroup().addTo(mapa),
@@ -203,7 +214,22 @@ export function encuadra(vuelos) {
     }
   }
   if (!pts.length) return;
-  mapa.fitBounds(L.latLngBounds(pts).pad(0.1));
+
+  /* ===== PRIMERO SE COMPRUEBA EL TAMAÑO =====
+     Si el contenedor mide cero, fitBounds calcula un encuadre absurdo (o ninguno)
+     y el mapa se queda en el mundo entero. Cuando pasa eso, se reintenta en el
+     siguiente ciclo en vez de dar por hecho que salio bien. */
+  const hacerlo = () => {
+    const c = mapa.getContainer();
+    if (!c || c.clientWidth < 40 || c.clientHeight < 40) return false;
+    mapa.fitBounds(L.latLngBounds(pts).pad(0.1), { animate: false });
+    return true;
+  };
+
+  if (!hacerlo()) {
+    mapa.invalidateSize();
+    setTimeout(() => { mapa.invalidateSize(); hacerlo(); }, 200);
+  }
 }
 
 export function limpia(grupo) {
