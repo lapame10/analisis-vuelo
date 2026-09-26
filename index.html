@@ -3,8 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Análisis de vuelo</title>
+<title>ThermalApp</title>
 <meta name="theme-color" content="#2e4a6f">
+<meta name="apple-mobile-web-app-title" content="ThermalApp">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icono-192.png">
 
@@ -156,6 +157,26 @@ tr.clic:hover td{ background:#f7f9fc }
 #msgRes2 .claro{ background:#eef3f9; border-left:3px solid var(--blue); border-radius:8px;
   padding:13px; font-size:15px; margin-top:8px; white-space:pre-wrap; word-break:break-word }
 
+/* ---------- las notas del vuelo (el canal) ----------
+   El estilo esta hecho a proposito para que parezca parte del analisis: una
+   lista de anotaciones tecnicas, con su hora, como las que se apuntan despues de
+   volar. Nada aqui dice "mensaje" ni "chat". */
+#cNotas{ display:flex; flex-direction:column; gap:1px }
+.nota{ display:flex; gap:10px; padding:9px 4px; border-bottom:1px solid #f0ede7; font-size:13.5px }
+.nota:last-child{ border:0 }
+.nota .h{ color:var(--sub); font-size:11.5px; font-variant-numeric:tabular-nums;
+  flex:none; width:42px; padding-top:2px }
+.nota .x{ flex:1; white-space:pre-wrap; word-break:break-word }
+.nota.mia .x{ color:var(--ink) }
+.nota.suya .x{ color:#3a4250 }
+.nota.mia .h::after{ content:' ·' }
+.escribir{ display:flex; gap:8px; align-items:flex-end; margin-top:12px }
+.escribir textarea{ flex:1; min-height:44px; max-height:120px; font:inherit; font-size:14px;
+  padding:10px 11px; border:1px solid var(--line); border-radius:10px; resize:none; background:#fbfaf8 }
+#cEstado{ font-size:11.5px; color:var(--sub); min-height:16px; margin-top:8px }
+.punto{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:5px; vertical-align:middle }
+.punto.si{ background:var(--ok) } .punto.no{ background:#c9c4ba }
+
 /* ---------- el detalle del cursor ---------- */
 #lectura{ font-size:12.5px; color:var(--sub); min-height:18px; font-variant-numeric:tabular-nums }
 #lectura b{ color:var(--ink) }
@@ -165,8 +186,9 @@ tr.clic:hover td{ background:#f7f9fc }
 
 <header>
   <div class="in">
-    <h1>Análisis de vuelo<small id="subtitulo">Sube tus archivos IGC</small></h1>
-    <button id="bSecreto" style="display:none">Mensaje</button>
+    <h1>ThermalApp<small id="subtitulo">Sube tus archivos IGC</small></h1>
+    <button id="bNotas" style="display:none">Notas</button>
+    <button id="bMensaje" style="display:none">Etiqueta</button>
     <button id="bCargar" style="display:none">Añadir IGC</button>
     <button id="bVaciar" style="display:none">Vaciar</button>
   </div>
@@ -181,7 +203,7 @@ tr.clic:hover td{ background:#f7f9fc }
         <h2>Tira aquí tus archivos IGC</h2>
         <p>Uno o varios. Se quedan en tu teléfono: no se sube nada a ningún sitio.</p>
         <button class="btn" id="bElegir">Elegir archivos</button>
-        <div class="mt2"><button class="btn gh" id="bSecreto2">Tengo un mensaje escondido</button></div>
+        <div class="mt2"><button class="btn gh" id="bNotas2">Notas del vuelo</button></div>
         <input type="file" id="input" accept=".igc,.IGC,.txt" multiple hidden>
       </div>
       <div class="pie">
@@ -242,7 +264,31 @@ tr.clic:hover td{ background:#f7f9fc }
 
   </section>
 
-  <!-- ============ PANTALLA 3: MENSAJE ESCONDIDO ============ -->
+  <!-- ============ PANTALLA 3: NOTAS DEL VUELO ============ -->
+  <section class="pant" id="pNotas">
+    <div class="card">
+      <h2 style="margin:0 0 2px;font-size:17px">Notas del vuelo</h2>
+      <p class="mini" style="margin:0 0 4px">Anotaciones compartidas con tu compañero de equipo.
+      Cada uno lleva las suyas en su teléfono.</p>
+      <div id="cEstado"></div>
+    </div>
+
+    <div class="card">
+      <div id="cNotas"><p class="mini">Todavía no hay notas.</p></div>
+      <div class="escribir">
+        <textarea id="cTexto" placeholder="Añadir una nota…" rows="1"></textarea>
+        <button class="btn" id="cEnviar">Añadir</button>
+      </div>
+      <p class="mini mt">Para ver las notas de tu compañero, los dos tenéis que usar
+      <b>la misma contraseña de equipo</b>. Se acuerda en persona.</p>
+      <div class="row mt">
+        <button class="btn gh" id="cSalir">Volver al análisis</button>
+        <button class="btn gh" id="cCambiar">Cambiar de equipo</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PANTALLA 4: MENSAJE ESCONDIDO ============ -->
   <section class="pant" id="pSecreto">
     <h2 style="margin:0 0 4px;font-size:19px">Mensaje escondido</h2>
     <p class="mini mb">Un archivo de vuelo que además lleva un mensaje dentro.
@@ -297,6 +343,7 @@ import { analiza, fmt, distancia } from './vuelo.js';
 import * as Mapa from './mapa.js';
 import * as Graf from './grafico.js';
 import { esconde, lee, llevaAlgo } from './secreto.js';
+import * as Canal from './canal.js';
 
 /* ============================================================
    El estado
@@ -384,7 +431,8 @@ function abreAnalisis() {
   document.getElementById('pAnalisis').classList.add('on');
   document.getElementById('bCargar').style.display = '';
   document.getElementById('bVaciar').style.display = '';
-  document.getElementById('bSecreto').style.display = '';
+  document.getElementById('bNotas').style.display = '';
+  document.getElementById('bMensaje').style.display = '';
 
   /* el mapa se monta la primera vez, y sólo entonces: Leaflet no funciona si el
      contenedor está oculto (mide cero) */
@@ -580,13 +628,9 @@ function escapa(s) {
    ============================================================ */
 
 /* ---------- ir y volver de la pantalla ---------- */
-const abreSecreto = () => {
-  document.querySelectorAll('.pant').forEach(x => x.classList.remove('on'));
-  document.getElementById('pSecreto').classList.add('on');
-  window.scrollTo(0, 0);
-};
-document.getElementById('bSecreto2').onclick = abreSecreto;
-document.getElementById('bSecreto').onclick = () => {
+/* el boton "Mensaje" de dentro sigue existiendo para esconder un mensaje en un
+   IGC, pero el nombre visible ahora es otro: es una herramienta de la app. */
+document.getElementById('bMensaje').onclick = () => {
   document.querySelectorAll('.pant').forEach(x => x.classList.remove('on'));
   document.getElementById('pSecreto').classList.add('on');
   /* el desplegable de vuelos, con los que hay cargados */
@@ -683,6 +727,152 @@ document.getElementById('msgLeer').onclick = async () => {
     '<div class="claro">' + escapa(r.mensaje) + '</div>' +
     '<div class="mini mt">' + r.trozos + ' trozo(s) · ' + r.bytes + ' bytes cifrados</div>';
 };
+
+/* ============================================================
+   LAS NOTAS DEL VUELO (el canal)
+   ============================================================
+   Dos personas con la misma contrasena de equipo comparten notas. Los mensajes
+   van CIFRADOS: lo que llega al servidor son bytes sin sentido.
+
+   Y todo se ensena como "notas de vuelo" dentro del analisis, con su hora, como
+   las que se apuntan despues de volar. Nada en la pantalla dice "mensaje".
+   ============================================================ */
+
+let canal = null;
+let tLatido = null;
+
+/* ---------- entrar y salir ---------- */
+function abreNotas() {
+  document.querySelectorAll('.pant').forEach(x => x.classList.remove('on'));
+  document.getElementById('pNotas').classList.add('on');
+  window.scrollTo(0, 0);
+  if (!canal) pideEquipo();
+  else {
+    pintaNotas();
+    latido();
+  }
+}
+
+/* ---------- el equipo: la contrasena compartida ----------
+   Se guarda en el telefono para no tener que escribirla cada vez. Pero se puede
+   cambiar. */
+function pideEquipo() {
+  const guardada = (() => { try { return localStorage.getItem('pad-equipo'); } catch (e) { return null; } })();
+  const c = document.getElementById('cNotas');
+  c.innerHTML = `
+    <div style="padding:6px 0">
+      <p class="mini" style="margin:0 0 10px">Escribe la contraseña de equipo. Los dos tenéis que
+      poner <b>la misma</b>, y a partir de ahí os veis las notas.</p>
+      <input type="password" id="eqIn" placeholder="Contraseña de equipo"
+        style="width:100%;font:inherit;font-size:14px;padding:10px 11px;border:1px solid var(--line);border-radius:10px;background:#fbfaf8">
+      <p class="mini mt" style="margin-bottom:0">No se guarda en ningún sitio más que en tu teléfono,
+      y no sale de aquí. <b>Si se pierde, no se puede recuperar lo escrito.</b></p>
+    </div>`;
+  const b = document.createElement('button');
+  b.className = 'btn mt';
+  b.textContent = 'Entrar';
+  b.onclick = async () => {
+    const v = document.getElementById('eqIn').value;
+    const n = Canal.nuevoCanal(v);
+    if (!n.ok) { aviso(n.motivo, 4200); return; }
+    canal = n;
+    const r = await Canal.abre(canal);
+    if (!r.ok) { aviso(r.motivo, 4200); canal = null; return; }
+    try { localStorage.setItem('pad-equipo', v); } catch (e) {}
+    pintaNotas(); latido();
+  };
+  c.appendChild(b);
+  if (guardada) document.getElementById('eqIn').value = guardada;
+  setTimeout(() => { const i = document.getElementById('eqIn'); if (i) i.focus(); }, 250);
+}
+
+function latido() {
+  clearInterval(tLatido);
+  /* cada 12 segundos se mira si hay algo nuevo. Sin gastar: si no hay, no se
+     trae nada. */
+  tLatido = setInterval(async () => {
+    if (!canal || !canal.clave) return;
+    const ultimo = canal.mensajes.length ? canal.mensajes[canal.mensajes.length - 1].id : null;
+    const hay = await Canal.hayNuevo(canal, ultimo);
+    if (hay) { await trae(); pintaNotas(); }
+  }, 12000);
+}
+
+async function trae() {
+  const r = await Canal.recibe(canal);
+  if (!r.ok) return { ok: false, motivo: r.motivo };
+  /* se juntan con los que ya hay, sin repetir */
+  const porId = {};
+  for (const m of canal.mensajes) porId[m.id] = m;
+  for (const m of (r.mensajes || [])) porId[m.id] = m;
+  canal.mensajes = Object.values(porId).sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  return { ok: true, nuevos: r.nuevos };
+}
+
+/* ---------- pintar ---------- */
+function pintaNotas() {
+  const c = document.getElementById('cNotas');
+  const est = document.getElementById('cEstado');
+
+  if (!canal || !canal.clave) { pideEquipo(); return; }
+
+  const conTexto = canal.mensajes.filter(m => !m.ilegible);
+  if (!conTexto.length) {
+    c.innerHTML = '<p class="mini">Todavía no hay notas. Escribe la primera.</p>';
+  } else {
+    let ultimaFecha = '';
+    c.innerHTML = conTexto.map(m => {
+      const f = Canal.fecha(m.ts);
+      let sep = '';
+      if (f !== ultimaFecha) { ultimaFecha = f; }
+      return `<div class="nota ${m.mio ? 'mia' : 'suya'}">
+        <div class="h">${sep}${Canal.hora(m.ts)}</div>
+        <div class="x">${escapa(m.texto)}</div>
+      </div>`;
+    }).join('');
+  }
+
+  const malos = canal.mensajes.filter(m => m.ilegible).length;
+  est.innerHTML =
+    `<span class="punto si"></span>Equipo conectado · ${conTexto.length} nota${conTexto.length === 1 ? '' : 's'}` +
+    (malos ? ` · <span style="color:var(--mal)">${malos} que no se pudo abrir</span>` : '');
+}
+
+/* ---------- enviar ---------- */
+document.getElementById('cEnviar').onclick = async () => {
+  if (!canal || !canal.clave) { aviso('Primero entra con la contraseña de equipo.', 4000); return; }
+  const ta = document.getElementById('cTexto');
+  const t = ta.value;
+  if (!t.trim()) return;
+  const r = await Canal.envia(canal, t);
+  if (!r.ok) { aviso(r.motivo, 4200); return; }
+  ta.value = '';
+  await trae();
+  pintaNotas();
+};
+
+/* con Enter se envia, y con Shift+Enter se hace salto de linea */
+document.getElementById('cTexto').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('cEnviar').click(); }
+});
+
+/* ---------- los botones ---------- */
+document.getElementById('cSalir').onclick = () => {
+  clearInterval(tLatido);
+  document.getElementById('pNotas').classList.remove('on');
+  document.getElementById('pAnalisis').classList.add('on');
+  window.scrollTo(0, 0);
+};
+
+document.getElementById('cCambiar').onclick = () => {
+  try { localStorage.removeItem('pad-equipo'); } catch (e) {}
+  canal = null;
+  clearInterval(tLatido);
+  pideEquipo();
+};
+
+document.getElementById('bNotas').onclick = abreNotas;
+document.getElementById('bNotas2').onclick = abreNotas;
 
 /* ============================================================
    Los botones y la carga

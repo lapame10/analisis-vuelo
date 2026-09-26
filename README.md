@@ -102,3 +102,56 @@ node pruebas/test-secreto.mjs
 29 comprobaciones. Incluyen que la contraseña equivocada **no** saque el mensaje,
 que un archivo sin mensaje lo diga claro, que un trozo cortado se detecte, y que
 acentos, japonés y emoji sobrevivan.
+
+---
+
+# Notas del vuelo (el canal)
+
+Dos personas con **la misma contraseña de equipo** comparten notas. Ida y vuelta,
+en vivo. Y todo aparece **dentro de la app, como notas de vuelo** — si alguien
+mira la pantalla, ve un análisis de vuelo con sus anotaciones. Que es lo que es.
+
+## Cómo se encuentran las dos sin un servidor que las conecte
+
+El canal **no tiene nombre**. Se llama por el hash de la contraseña:
+
+```
+canal = SHA-256( sal_fija + contraseña )  ->  los primeros 24 caracteres
+```
+
+Dos personas que escriban la misma contraseña obtienen el mismo nombre de canal y
+se encuentran. **Sin registrarse, sin cuenta, sin dar sus nombres.**
+
+Y al revés: **quien no sepa la contraseña no puede ni encontrar el canal.** No es
+que no pueda leerlo — es que no puede llegar a él.
+
+## Por qué el servidor no puede leer nada
+
+Cada mensaje se cifra con **AES-GCM antes de salir del dispositivo**. Y **la hora
+también va cifrada** — si fuera en claro, se sabría cuándo se escribió cada uno.
+
+Lo que llega al servidor es esto, y nada más:
+
+```json
+{"-P2TxHDdfrCJZK68_Unq":{"d":"879_8xbMqEIAo5V0GoG5aaR4reHSkiLW4Dk-k9DWgGx9...","i":"Isay8Kh9K0Tj3xP3"}}
+```
+
+**No se ve el texto, ni la contraseña, ni la hora.** Ni el servidor, ni quien
+administre la base de datos, ni quien consiga entrar en ella.
+
+## Los tests
+
+```
+node pruebas/test-canal.mjs
+```
+
+28 comprobaciones escritas **contra el servidor de verdad**, con dos "personas" y
+dos dispositivos distintos. Incluyen que las dos caigan en el mismo canal, que
+con otra contraseña no lleguen, que el servidor no vea el texto, y que borrar
+borre de verdad.
+
+## Lo que sí se ve desde fuera
+
+Aunque no se pueda leer el contenido, **sí se puede ver que hay algo**: cuántos
+mensajes hay y cuándo se escribieron. Es inevitable sin servidor propio. Decirlo,
+y dejar que cada uno decida.
