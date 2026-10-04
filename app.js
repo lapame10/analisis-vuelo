@@ -7,6 +7,7 @@ import { esconde, lee, llevaAlgo } from './secreto.js';
 import * as Canal from './canal.js';
 import { leeIndice, leeTask, tituloDe, subtituloDe } from './tasks.js';
 import * as Tel from './dispositivo.js';
+import * as Bit from './bitacora-ui.js';
 
 /* ============================================================
    El estado
@@ -61,6 +62,7 @@ async function arranca() {
   document.getElementById('pSecreto').classList.remove('on');
   document.getElementById('pAnalisis').classList.add('on');
   document.getElementById('bMensaje').style.display = '';
+  document.getElementById('bBitacora').style.display = '';
 
   enganchaLosToques();
   TASKS = await leeIndice();
@@ -352,6 +354,25 @@ function escapa(s) {
 /* ---------- ir y volver de la pantalla ---------- */
 /* el boton "Mensaje" de dentro sigue existiendo para esconder un mensaje en un
    IGC, pero el nombre visible ahora es otro: es una herramienta de la app. */
+/* ============================================================
+   LA BITÁCORA
+   ============================================================
+   Una pantalla mas, que se monta sola. Todo lo que hace vive en bitacora.js y
+   bitacora-ui.js, y ninguno de los dos necesita internet.
+   ============================================================ */
+document.getElementById('bBitacora').onclick = () => {
+  document.querySelectorAll('.pant').forEach(x => x.classList.remove('on'));
+  document.getElementById('pBitacora').classList.add('on');
+  Bit.monta('bitCuerpo', {
+    alVolver: () => {
+      document.getElementById('pBitacora').classList.remove('on');
+      document.getElementById('pAnalisis').classList.add('on');
+      window.scrollTo(0, 0);
+    },
+  });
+  window.scrollTo(0, 0);
+};
+
 document.getElementById('bMensaje').onclick = () => {
   document.querySelectorAll('.pant').forEach(x => x.classList.remove('on'));
   document.getElementById('pSecreto').classList.add('on');

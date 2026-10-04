@@ -121,3 +121,39 @@ se lee aunque alguien llegue al canal.
 que subir nada** — el vuelo ya está ahí. El archivo que sale se abre como
 cualquier IGC: mismos puntos, misma distancia, mismo viento. Solo lleva unas
 líneas más.
+
+---
+
+# La bitácora
+
+El cuaderno de vuelo. Cuatro preguntas, siempre las mismas:
+
+```
+Cómo me sentí · Qué aprendí · Qué hice bien · Qué hice mal
+```
+
+## Funciona SIN internet
+
+Y esa es la parte que decide si vale o no: **se escribe al aterrizar, en un
+despegue, y ahí no hay señal.** Todo va al almacén del propio teléfono. Ni
+escribir, ni leer, ni ver los patrones necesita conexión.
+
+No manda nada a ningún sitio. Cero llamadas al servidor.
+
+## Los patrones
+
+Doce vuelos anotados no valen por separado: valen juntos. Al final sale lo que
+repites sin darte cuenta:
+
+> *En 9 de 12 vuelos escribiste **"salí tarde"** en qué hice mal.*
+
+Eso no lo ves en un vuelo suelto. Y es lo único que te hace mejor.
+
+Para contar las palabras hay que quitar los acentos (si no, "termica" y "térmica"
+serían dos palabras distintas). Pero se guarda la forma original y se enseña esa
+— leer "senti" en pantalla parece roto.
+
+## Guardar copia
+
+Un botón exporta todo a un archivo. Sin eso, lo escrito vive en un teléfono y se
+pierde el día que se borre. Y se puede volver a cargar: no borra, junta.
