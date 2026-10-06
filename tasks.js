@@ -151,6 +151,8 @@ export function subtituloDe(t) {
   const partes = [];
   if (t.sitio) partes.push(t.sitio);
   if (t.fecha) partes.push(t.fecha);
-  if (t.vuelos && t.vuelos.length) partes.push(t.vuelos.length + ' pilotos');
+  /* antes ponia "6 pilotos". Ya no: cada task tiene un vuelo, y ademas los
+     nombres eran de relleno. */
+  if (t.km) partes.push(t.km.toLocaleString('es-MX', { maximumFractionDigits: 0 }) + ' km');
   return partes.join(' · ') || 'Análisis de vuelo';
 }

@@ -15,6 +15,7 @@ import * as B from './bitacora.js';
 let vista = null;         /* 'lista' | 'ficha' | 'lectura' */
 let editando = null;      /* la entrada que se está escribiendo */
 let alVolver = null;      /* a dónde volver al salir */
+let vueloActual = null;   /* el vuelo que se está mirando (subido o de un task) */
 
 /* ============================================================
    Montar la pantalla
@@ -22,6 +23,7 @@ let alVolver = null;      /* a dónde volver al salir */
 export function monta(contenedor, opciones = {}) {
   vista = 'lista';
   alVolver = opciones.alVolver || null;
+  vueloActual = opciones.vuelo || null;
   const c = document.getElementById(contenedor);
   if (!c) return;
   pintaLista(c);
@@ -131,6 +133,14 @@ function pintaFicha(c, e) {
       </div>`).join('')}
 
     <div class="card">
+      <h3 style="margin:0 0 2px">El vuelo</h3>
+      <p class="mini" style="margin:0 0 8px">Si subes tu IGC, aquí queda enganchado a esta entrada:
+      distancia, tiempo y las marcas de lo que pasó y cuándo.</p>
+      <div id="bitVueloRes">${vueloPintado(e)}</div>
+      ${vueloActual ? '<div class="mt2"><button class="btn sec" id="bitUsarVuelo">Usar el vuelo que estoy viendo</button></div>' : ''}
+    </div>
+
+    <div class="card">
       <h3 style="margin:0 0 2px">Las condiciones</h3>
       <p class="mini" style="margin:0 0 8px">Muchas veces el "me sentí mal" era un día raro, y no tú.</p>
       <div class="row" style="gap:8px">
@@ -151,6 +161,24 @@ function pintaFicha(c, e) {
 
   engancha(c, 'bitAtras', () => pintaLista(c));
   engancha(c, 'bitGuardar', () => guardaFicha(c));
+  engancha(c, 'bitUsarVuelo', () => {
+    if (!vueloActual) return;
+    e.vuelo = {
+      /* el nombre del vuelo, tal como lo ve en la app */
+      nombre: vueloActual.nombre || 'Mi vuelo',
+      archivo: vueloActual.archivo || '',
+      km: vueloActual.resumen ? +(vueloActual.resumen.recorrido / 1000).toFixed(1) : 0,
+      horas: vueloActual.resumen ? +((vueloActual.resumen.duracion || 0) / 3600).toFixed(2) : 0,
+      termicas: (vueloActual.termicas || []).filter(t => t.esTermica).length,
+      /* el perfil adelgazado, para poder dibujar el vuelo en la ficha sin el
+         archivo entero (que son 200 KB y solo hacen falta ~120 puntos) */
+      perfil: perfilDe(vueloActual),
+    };
+    const r = B.guardaEntrada(e);
+    document.getElementById('bitVueloRes').innerHTML = vueloPintado(e);
+    if (r.ok) msg(c, 'Vuelo enganchado a esta entrada.', 'ok');
+    engancha(c, 'bitAtras', () => pintaLista(c));
+  });
   engancha(c, 'bitBorrar', () => {
     if (!confirm('¿Borrar este vuelo de la bitácora? No se puede deshacer.')) return;
     B.borraEntrada(editando.id);
@@ -242,6 +270,31 @@ async function importa(c, ev) {
   msg(c, r.nuevas ? `Se han añadido <b>${r.nuevas}</b> vuelos. Hay ${r.total} en total.` : 'No había nada nuevo.', 'ok');
   ev.target.value = '';
   setTimeout(() => pintaLista(c), 900);
+}
+
+/* ============================================================
+   El vuelo de una entrada, pintado
+   ============================================================ */
+function perfilDe(v) {
+  const p = (v.puntos || []);
+  if (!p.length) return [];
+  const cada = Math.max(1, Math.floor(p.length / 120));
+  const out = [];
+  for (let i = 0; i < p.length; i += cada) {
+    out.push([Math.round(p[i].t - p[0].t), Math.round(p[i].alt != null ? p[i].alt : (p[i].altura || 0))]);
+  }
+  return out;
+}
+
+function vueloPintado(e) {
+  const v = e.vuelo;
+  if (!v) return '<p class="mini" style="margin:0">Sin vuelo enganchado.</p>';
+  return `<div class="mini">${escapa(v.nombre || '')}</div>
+    <div class="bit-meta" style="margin-top:4px">
+      ${v.km ? '<span><b>' + v.km + '</b> km</span>' : ''}
+      ${v.horas ? '<span><b>' + v.horas.toFixed(1) + '</b> h</span>' : ''}
+      ${v.termicas ? '<span><b>' + v.termicas + '</b> térmicas</span>' : ''}
+    </div>`;
 }
 
 /* ============================================================

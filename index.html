@@ -274,7 +274,9 @@ tr.clic:hover td{ background:#f7f9fc }
 <header>
   <div class="in">
     <h1>ThermalApp<small id="subtitulo">Análisis de vuelo</small></h1>
+    <button id="bSubir" style="display:none">Subir mi vuelo</button>
     <button id="bBitacora" style="display:none">Bitácora</button>
+    <input type="file" id="elIGC" accept=".igc,.IGC,.txt" hidden>
     <button id="bMensaje" style="display:none">Etiqueta</button>
   </div>
   <div class="in"><div id="tasks"></div></div>
@@ -288,9 +290,7 @@ tr.clic:hover td{ background:#f7f9fc }
   <!-- ============ PANTALLA 2: ANÁLISIS ============ -->
   <section class="pant" id="pAnalisis">
 
-    <div class="card">
-      <h3>Pilotos del task</h3>
-      <div id="pilotos"></div>
+    <!-- el selector de pilotos ya no esta: la bitacora es de una sola persona -->
     </div>
 
     <div class="card" style="padding:0;border:0;background:transparent">
@@ -316,17 +316,7 @@ tr.clic:hover td{ background:#f7f9fc }
       <div id="gVel"></div>
     </div>
 
-    <div class="card">
-      <h3>Los vuelos</h3>
-      <table>
-        <thead><tr>
-          <th>Piloto</th><th>Dist.</th><th>Tiempo</th><th>+Altura</th>
-          <th>Mejor subida</th><th>Planeo</th><th>Viento</th>
-        </tr></thead>
-        <tbody id="tabla"></tbody>
-      </table>
-      <p class="mini mt">Toca una fila para ver ese vuelo en el mapa y los gráficos.</p>
-    </div>
+        <!-- la tabla comparativa tambien fuera: ya no hay con quien comparar -->
 
     <div class="card">
       <h3>Térmicas <span class="mini" id="nTerm"></span></h3>
@@ -342,9 +332,7 @@ tr.clic:hover td{ background:#f7f9fc }
       <div id="obs"></div>
     </div>
 
-    <div class="card">
-      <h3>Comparación <span class="mini">altitud desde el despegue de cada uno</span></h3>
-      <div id="gComp"></div>
+        <!-- el grafico de comparacion ya no esta: con un solo vuelo no hay con quien comparar -->
     </div>
 
   </section>

@@ -15,7 +15,7 @@ import * as Bit from './bitacora-ui.js';
 const COLORES = ['#2e4a6f', '#ff8a3d', '#2f7a4d', '#a8742c', '#7a4d9e', '#b3453a', '#4d7fd1'];
 let TASKS = [];       /* los tasks fijos, leidos de tasks/ */
 let taskActual = 0;   /* cual se está mirando */
-let pilotoActual = 0; /* y dentro del task, que piloto */
+/* ya no hay "piloto dentro del task": cada task tiene UN vuelo */
 let vuelos = [];      /* el vuelo del task actual, en la forma que espera el resto */
 let cual = 0;
 let listo = false;    /* el mapa ya está montado */
@@ -63,6 +63,7 @@ async function arranca() {
   document.getElementById('pAnalisis').classList.add('on');
   document.getElementById('bMensaje').style.display = '';
   document.getElementById('bBitacora').style.display = '';
+  document.getElementById('bSubir').style.display = '';
 
   enganchaLosToques();
   TASKS = await leeIndice();
@@ -101,7 +102,7 @@ function pintaSelector() {
    Cada task tiene sus PROPIAS observaciones. Al cambiar de task se cierra el
    canal y se vuelve a abrir con el cuarto del task nuevo: la misma contraseña
    de equipo, pero otra conversacion. */
-async function abreTask(i, piloto) {
+async function abreTask(i) {
   const t = TASKS[i];
   if (!t) return;
 
@@ -115,11 +116,14 @@ async function abreTask(i, piloto) {
   if (!t.ok) return;
 
   taskActual = i;
-  pilotoActual = piloto == null ? (t.cual || 0) : piloto;
-
-  /* el vuelo que se mira, y los demas detras en gris para comparar */
-  vuelos = t.vuelos;
-  cual = pilotoActual;
+  /* ===== UN SOLO VUELO POR TASK =====
+     Antes se miraban seis pilotos a la vez (uno en color y los otros cinco en
+     gris detras, para comparar). Ya no: es la bitacora de Pam, y lo que importa
+     es su vuelo.
+     La aplicacion sigue guardando la lista entera, por si algun dia se quiere
+     volver a ver mas de uno; simplemente se enseña el primero. */
+  vuelos = t.vuelos.slice(0, 1);
+  cual = 0;
 
   /* el canal, al cuarto de este task */
   if (equipo) {
@@ -130,7 +134,6 @@ async function abreTask(i, piloto) {
   document.getElementById('subtitulo').textContent = subtituloDe(t);
 
   pintaSelector();
-  pintaPilotos();
   pinta();
   pintaObservaciones();
   if (canal && canal.clave) { await trae(); pintaObservaciones(); latido(); }
@@ -140,37 +143,27 @@ async function abreTask(i, piloto) {
 /* ---------- y el selector de pilotos del task ----------
    Los seis pilotos del dia, con su distancia. Se puede cambiar y ver el suyo:
    que es exactamente lo que se hace despues de volar. */
-function pintaPilotos() {
-  const c = document.getElementById('pilotos');
-  if (!c) return;
-  const t = TASKS[taskActual];
-  if (!t || !t.ok) { c.innerHTML = ''; return; }
+/* ===== YA NO HAY SELECTOR DE PILOTOS =====
+   La app tenia seis "pilotos" por task (julien garcia, baptiste, honorin, andy,
+   marcela) y una tabla comparativa. Pam: "quitalo, no tiene sentido tenerlo".
 
-  c.innerHTML = t.vuelos.map((v, i) => {
-    const km = v.resumen ? (v.resumen.recorrido / 1000).toFixed(0) : '?';
-    const nom = (v.nombre || '').split(/\s+/).slice(0, 2).join(' ') || ('Piloto ' + (i + 1));
-    return `<button data-i="${i}" class="${i === pilotoActual ? 'on' : ''}${v.esPam ? ' pam' : ''}">
-      ${escapa(nom)}<span class="km">${km} km</span></button>`;
-  }).join('');
-  c.querySelectorAll('button').forEach(b => {
-    b.onclick = () => {
-      pilotoActual = +b.dataset.i;
-      cual = pilotoActual;
-      pintaPilotos();
-      pinta();
-    };
-  });
-}
+   Y tiene razon: esto es SU bitacora. Compararse con nombres que no son nadie no
+   aporta nada, y encima distrae de lo unico que importa, que es su propio vuelo.
+
+   Cada task se queda con UN vuelo. Se sigue pudiendo cambiar de task arriba. */
 
 function pinta() {
   const v = vuelos[cual];
   if (!v) return;
 
   document.getElementById('subtitulo').textContent =
-    vuelos.length === 1 ? v.nombre : (vuelos.length + ' vuelos · viendo ' + v.nombre);
+    /* ya no hay "5 vuelos · viendo a alguien": hay un vuelo, el tuyo o el del
+       task que tengas abierto */
+    miVuelo && v === miVuelo ? 'Mi vuelo'
+      : (TASKS[taskActual] ? subtituloDe(TASKS[taskActual]) : 'Análisis de vuelo');
 
   pintaMets(v);
-  pintaTabla();
+
   pintaTermicas(v);
   pintaGraficos(v);
 
@@ -192,7 +185,14 @@ function pinta() {
    ============================================================ */
 function pintaMets(v) {
   const r = v.resumen;
-  document.getElementById('quienEs').textContent = v.nombre;
+  /* ===== EL TITULO, SIN NOMBRES DE PILOTO =====
+     Antes ponia el nombre del piloto ("julien garcia"). Ya no: esto es la
+     bitacora de Pam, y el unico vuelo que importa es el suyo.
+     Si ha subido su IGC, se pone el nombre de su archivo. Si esta mirando un
+     task, el nombre del task. */
+  document.getElementById('quienEs').textContent =
+    miVuelo && v === miVuelo ? 'Mi vuelo'
+    : (TASKS[taskActual] ? TASKS[taskActual].nombre : 'Vuelo');
 
   if (!r) {
     document.getElementById('mets').innerHTML =
@@ -231,32 +231,9 @@ function pintaMets(v) {
 /* ============================================================
    La tabla de los vuelos
    ============================================================ */
-function pintaTabla() {
-  const tb = document.getElementById('tabla');
-
-  /* para comparar de verdad se ordena por distancia recorrida, que es lo que
-     mide quien voló más lejos */
-  const orden = vuelos.map((v, i) => ({ v, i }))
-    .sort((a, b) => ((b.v.resumen && b.v.resumen.recorrido) || 0) - ((a.v.resumen && a.v.resumen.recorrido) || 0));
-
-  tb.innerHTML = orden.map(({ v, i }) => {
-    const r = v.resumen || {};
-    const cel = (x, dec = 0) => x == null ? '—' : Number(x).toLocaleString('es-MX', { maximumFractionDigits: dec });
-    return `<tr class="clic ${i === cual ? 'sel' : ''}" data-i="${i}">
-      <td><span class="chip" style="background:${v.color}"></span>${escapa(v.nombre)}</td>
-      <td>${r.recorrido ? cel(r.recorrido / 1000, 1) + ' km' : '—'}</td>
-      <td>${r.segundos ? fmt.hms(r.segundos) : '—'}</td>
-      <td class="pos">${r.ganado ? '+' + cel(r.ganado) + ' m' : '—'}</td>
-      <td>${r.mejorSubida ? fmt.ms(r.mejorSubida.vs) : '—'}</td>
-      <td>${r.grMedio ? fmt.gr(r.grMedio) + ' : 1' : '—'}</td>
-      <td>${v.viento ? (v.viento.pocoFiable ? '—' : Math.round(v.viento.vel) + ' km/h ' + fmt.grados(v.viento.dir)) : '—'}</td>
-    </tr>`;
-  }).join('');
-
-  tb.querySelectorAll('tr').forEach(tr => {
-    tr.onclick = () => { cual = +tr.dataset.i; pilotoActual = cual; pintaPilotos(); pinta(); };
-  });
-}
+/* ===== Y FUERA LA TABLA COMPARATIVA =====
+   Compararse con otros cinco no es lo que se viene a hacer a una bitacora. Lo
+   que se viene a hacer es entender TU vuelo. Los numeros de arriba ya estan. */
 
 /* ============================================================
    Las térmicas
@@ -307,8 +284,10 @@ function pintaGraficos(v) {
     alMover: (t) => muestraLectura(v, t),
   });
 
-  Graf.graficaComparacion(document.getElementById('gComp'), vuelos,
-    { colores: vuelos.map(x => x.color) });
+  /* La comparacion entre pilotos ya no se pinta: con un solo vuelo no hay nada
+     que comparar. Se deja el grafico de altitud de arriba, que es el del vuelo.
+     (Ojo: antes esto estaba comentado con "/*" sin cerrar, y se comia el resto
+     del archivo. Si algun dia se quiere volver a poner, se descomenta.) */
 
   document.getElementById('lectura').innerHTML = 'Mueve el dedo por los gráficos para ver el momento.';
 }
@@ -355,6 +334,71 @@ function escapa(s) {
 /* el boton "Mensaje" de dentro sigue existiendo para esconder un mensaje en un
    IGC, pero el nombre visible ahora es otro: es una herramienta de la app. */
 /* ============================================================
+   SUBIR TU PROPIO VUELO
+   ============================================================
+   Pam: "no puedo subir mi igc".
+
+   Y tenia razon: al poner los tasks fijos se quito la pantalla de subir
+   archivos, y sin eso no habia forma de meter SU vuelo. Que es justo lo que
+   necesita para la bitacora.
+
+   Ahora: el boton de arriba sube un IGC, lo analiza, y lo pone como el vuelo que
+   se esta mirando. El mapa, los graficos, las termicas y el viento salen igual
+   que con los tasks — es el mismo analisis.
+
+   Y el vuelo queda en memoria para poder anotarlo en la bitacora. Solo en
+   memoria: no se sube a ningun sitio, igual que los tasks.
+   ============================================================ */
+let miVuelo = null;      /* el vuelo que ha subido Pam, si ha subido uno */
+
+document.getElementById('bSubir').onclick = () => document.getElementById('elIGC').click();
+
+document.getElementById('elIGC').onchange = async (ev) => {
+  /* ===== SE COPIA EL ARCHIVO ANTES DE NADA =====
+     Esto ya me paso una vez en otra pantalla: si se limpia el input mientras se
+     esta leyendo, se pierde el archivo y no pasa nada, sin ningun error. */
+  const f = ev.target.files && ev.target.files[0];
+  ev.target.value = '';
+  if (!f) return;
+
+  aviso('Leyendo ' + f.name + '…', 2000);
+
+  let texto;
+  try { texto = await f.text(); }
+  catch (e) { aviso('No se pudo leer el archivo.', 5000); return; }
+
+  const a = analiza(texto, parseIGC);
+  if (!a.ok) {
+    aviso('Ese archivo no se pudo leer: ' + (a.motivo || 'no parece un IGC'), 6000);
+    return;
+  }
+
+  /* ===== EL NOMBRE ES EL DE TU ARCHIVO, NO EL DE DENTRO =====
+     El IGC lleva dentro el nombre del piloto (HFPLTPILOTINCHARGE). Usar ese
+     seria enseñar el nombre de otra persona en la bitacora de Pam — y ademas,
+     si algun dia sube un archivo que no es suyo, saldria el nombre del otro.
+
+     Manda el nombre del archivo que ha subido. Que ademas es lo que ella
+     reconoce: "manga-1-baixo-guandu.igc". */
+  miVuelo = {
+    ...a,
+    nombre: f.name.replace(/\.igc$/i, '').replace(/[-_]+/g, ' '),
+    archivo: f.name,
+    texto,
+  };
+  vuelos = [miVuelo];
+  cual = 0;
+
+  /* el mapa y todo lo demas, con su vuelo */
+  document.getElementById('subtitulo').textContent =
+    (a.nombre || f.name) + (a.resumen ? ' · ' + (a.resumen.recorrido / 1000).toFixed(1) + ' km' : '');
+
+  pinta();
+  window.scrollTo(0, 0);
+  aviso('Vuelo cargado. Ya puedes anotarlo en la bitácora.', 4000);
+};
+
+/* ============================================================
    LA BITÁCORA
    ============================================================
    Una pantalla mas, que se monta sola. Todo lo que hace vive en bitacora.js y
@@ -364,6 +408,9 @@ document.getElementById('bBitacora').onclick = () => {
   document.querySelectorAll('.pant').forEach(x => x.classList.remove('on'));
   document.getElementById('pBitacora').classList.add('on');
   Bit.monta('bitCuerpo', {
+    /* se le pasa el vuelo que se esta mirando, para poder engancharlo a la
+       entrada. Puede ser uno de los tasks o el que Pam acaba de subir. */
+    vuelo: vuelos[cual] || null,
     alVolver: () => {
       document.getElementById('pBitacora').classList.remove('on');
       document.getElementById('pAnalisis').classList.add('on');
